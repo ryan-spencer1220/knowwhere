@@ -1,112 +1,181 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { Avatar, initialsFrom } from "@/components/avatar";
+import { FollowButton } from "@/components/follow-button";
+import { ListCover } from "@/components/list-cover";
+import { Card, Heading, Pill, Screen } from "@/components/ui/kit";
+import { useAuth } from "@/lib/auth";
+import { getTrendingLists, type ListCard } from "@/lib/lists";
+import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
+import { useFocusQuery } from "@/lib/use-focus-query";
+import { getExploreUsers, type ExploreUser } from "@/lib/users";
 
-export default function TabTwoScreen() {
+type Tab = "lists" | "people";
+
+export default function ExploreScreen() {
+  const { session } = useAuth();
+  const styles = useThemedStyles(makeStyles);
+  const [tab, setTab] = useState<Tab>("lists");
+
+  const lists = useFocusQuery<ListCard[]>(() => getTrendingLists(session?.user.id ?? null));
+  const people = useFocusQuery<ExploreUser[]>(() => getExploreUsers(session?.user.id ?? null));
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
+    <Screen>
+      <Heading
+        title="Explore"
+        subtitle={tab === "lists" ? "Lists getting the most love right now" : "Find people to follow"}
+      />
+
+      {/* Lists / People toggle */}
+      <View style={styles.segment}>
+        {(
+          [
+            { value: "lists", label: "Lists", icon: "albums-outline" },
+            { value: "people", label: "People", icon: "people-outline" },
+          ] as const
+        ).map((opt) => {
+          const active = tab === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => setTab(opt.value)}
+              style={[styles.segmentItem, active && styles.segmentItemActive]}
+            >
+              <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{opt.label}</Text>
+            </Pressable>
+          );
         })}
-      </Collapsible>
-    </ParallaxScrollView>
+      </View>
+
+      {tab === "lists" ? <ListsTab query={lists} /> : <PeopleTab query={people} />}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+function ListsTab({ query }: { query: ReturnType<typeof useFocusQuery<ListCard[]>> }) {
+  const router = useRouter();
+  const Star = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { data, loading, error } = query;
+
+  if (loading) return <ActivityIndicator color={Star.ink} style={styles.loader} />;
+  if (error)
+    return (
+      <Card>
+        <Text style={styles.errorText}>{error}</Text>
+      </Card>
+    );
+  if (!data || data.length === 0)
+    return (
+      <Card style={styles.empty}>
+        <Text style={styles.emptyTitle}>No public lists yet</Text>
+        <Text style={styles.emptyBody}>Be the first — create a list and share your favorite spots.</Text>
+      </Card>
+    );
+
+  return (
+    <>
+      {data.map((item) => (
+        <Card
+          key={item.id}
+          style={styles.listCard}
+          cover={<ListCover url={item.coverImageUrl} seed={item.id} height={116} />}
+          onPress={() => router.push({ pathname: "/list/[id]", params: { id: item.id } })}
+        >
+          <View style={styles.topRow}>
+            {item.savesCount > 0 ? <Pill icon="flame" label="Trending" tone="accent" /> : <Pill icon="sparkles" label="Fresh" />}
+            <Text style={styles.saves}>★ {item.savesCount.toLocaleString()}</Text>
+          </View>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.metaRow}>
+            {item.city || item.location ? <Pill icon="location" label={item.city ?? item.location!} /> : <View />}
+            <Text style={styles.meta}>
+              <Text style={styles.metaStrong}>{item.placesCount}</Text> places
+            </Text>
+          </View>
+        </Card>
+      ))}
+    </>
+  );
+}
+
+function PeopleTab({ query }: { query: ReturnType<typeof useFocusQuery<ExploreUser[]>> }) {
+  const router = useRouter();
+  const Star = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { data, loading, error } = query;
+
+  if (loading) return <ActivityIndicator color={Star.ink} style={styles.loader} />;
+  if (error)
+    return (
+      <Card>
+        <Text style={styles.errorText}>{error}</Text>
+      </Card>
+    );
+  if (!data || data.length === 0)
+    return (
+      <Card style={styles.empty}>
+        <Text style={styles.emptyTitle}>No one to show yet</Text>
+        <Text style={styles.emptyBody}>As people join KnowWhere, they&apos;ll show up here.</Text>
+      </Card>
+    );
+
+  return (
+    <>
+      {data.map((u) => (
+        <Card key={u.id}>
+          <View style={styles.userRow}>
+            <Pressable style={styles.userInfo} onPress={() => router.push({ pathname: "/user/[id]", params: { id: u.id } })}>
+              <Avatar url={u.avatarUrl} initials={initialsFrom(u.displayName, u.username)} size={52} />
+              <View style={styles.flex}>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {u.displayName ?? "KnowWhere user"}
+                </Text>
+                {u.username ? <Text style={styles.userHandle}>@{u.username}</Text> : null}
+                {u.city ? <Text style={styles.userCity}>{u.city}</Text> : null}
+              </View>
+            </Pressable>
+            <FollowButton targetId={u.id} following={u.isFollowing} />
+          </View>
+        </Card>
+      ))}
+    </>
+  );
+}
+
+const makeStyles = (Star: Palette) => StyleSheet.create({
+  flex: { flex: 1 },
+  loader: { marginTop: 40 },
+  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
+  empty: { alignItems: "center", gap: 6, paddingVertical: 28 },
+  emptyTitle: { fontSize: 18, fontWeight: "900", color: Star.ink },
+  emptyBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center" },
+  segment: {
+    flexDirection: "row",
+    backgroundColor: Star.surface,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    padding: 4,
+    gap: 4,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  segmentItem: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 9 },
+  segmentItemActive: { backgroundColor: Star.ink },
+  segmentText: { fontSize: 15, fontWeight: "800", color: Star.ink },
+  segmentTextActive: { color: Star.pop },
+  listCard: { gap: 5, paddingBottom: 13 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  saves: { fontSize: 14, fontWeight: "800", color: Star.ink },
+  cardTitle: { fontSize: 19, fontWeight: "800", color: Star.ink, letterSpacing: -0.4 },
+  metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 1 },
+  meta: { fontSize: 13, fontWeight: "600", color: Star.textMuted },
+  metaStrong: { color: Star.ink, fontWeight: "800" },
+  userRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  userInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
+  userName: { fontSize: 16, fontWeight: "800", color: Star.ink },
+  userHandle: { fontSize: 13, fontWeight: "700", color: Star.pop },
+  userCity: { fontSize: 13, fontWeight: "500", color: Star.textMuted, marginTop: 1 },
 });

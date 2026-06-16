@@ -1,0 +1,284 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { LikeButton } from "@/components/like-button";
+import { ListMap } from "@/components/list-map";
+import { Card, Pill, Texture } from "@/components/ui/kit";
+import { useAuth } from "@/lib/auth";
+import { deleteList, getListDetail, setListVisibility, timeAgo, type ListDetail } from "@/lib/lists";
+import { REPORT_REASONS, reportContent } from "@/lib/moderation";
+import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
+import { useFocusQuery } from "@/lib/use-focus-query";
+
+export default function ListDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { session } = useAuth();
+  const Star = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { data, loading, error } = useFocusQuery<ListDetail | null>(() =>
+    id ? getListDetail(id, session?.user.id ?? null) : Promise.resolve(null),
+  );
+
+  const isOwner = !!data && !!session && data.ownerId === session.user.id;
+  const [isPublic, setIsPublic] = useState(true);
+  const [togglingVis, setTogglingVis] = useState(false);
+  useEffect(() => {
+    if (data) setIsPublic(data.isPublic);
+  }, [data]);
+
+  const [deleting, setDeleting] = useState(false);
+
+  const promptReport = () => {
+    if (!id) return;
+    Alert.alert("Report this list", "Why are you reporting it?", [
+      ...REPORT_REASONS.map((reason) => ({
+        text: reason,
+        onPress: () => {
+          reportContent({ targetType: "list", targetId: id, reason }).catch(() => {});
+          Alert.alert("Thanks for reporting", "Our team will review this list.");
+        },
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  };
+
+  const confirmDelete = () => {
+    if (!data || deleting) return;
+    Alert.alert(
+      "Delete list",
+      `Delete "${data.title}"? This removes the list and all its places for everyone. This can't be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteList(data.id);
+              router.back();
+            } catch {
+              setDeleting(false);
+              Alert.alert("Couldn't delete", "Something went wrong deleting this list. Please try again.");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const toggleVisibility = async () => {
+    if (!data || togglingVis) return;
+    const next = !isPublic;
+    setIsPublic(next);
+    setTogglingVis(true);
+    try {
+      await setListVisibility(data.id, next);
+    } catch {
+      setIsPublic(!next);
+    } finally {
+      setTogglingVis(false);
+    }
+  };
+
+  const mapPlaces =
+    data?.places
+      .filter((p) => p.latitude != null && p.longitude != null)
+      .map((p) => ({ id: p.id, name: p.name, latitude: p.latitude as number, longitude: p.longitude as number })) ?? [];
+
+  return (
+    <View style={styles.root}>
+      <Texture />
+      <SafeAreaView edges={["top"]}>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
+            <Ionicons name="chevron-back" size={24} color={Star.ink} />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {data?.title ?? "List"}
+          </Text>
+          {isOwner ? (
+            <Pressable
+              onPress={confirmDelete}
+              disabled={deleting}
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+              hitSlop={8}
+              accessibilityLabel="Delete list"
+            >
+              {deleting ? <ActivityIndicator size="small" color={Star.danger} /> : <Ionicons name="trash-outline" size={22} color={Star.danger} />}
+            </Pressable>
+          ) : data ? (
+            <Pressable
+              onPress={promptReport}
+              style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+              hitSlop={8}
+              accessibilityLabel="Report list"
+            >
+              <Ionicons name="ellipsis-horizontal" size={22} color={Star.ink} />
+            </Pressable>
+          ) : (
+            <View style={styles.backBtn} />
+          )}
+        </View>
+      </SafeAreaView>
+
+      {loading ? (
+        <ActivityIndicator color={Star.ink} style={styles.loader} />
+      ) : error || !data ? (
+        <View style={styles.centerPad}>
+          <Card>
+            <Text style={styles.errorText}>{error ?? "Could not load this list."}</Text>
+          </Card>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ListMap places={mapPlaces} />
+
+          <View style={styles.body}>
+            <Text style={styles.title}>{data.title}</Text>
+            <View style={styles.metaRow}>
+              <Pressable
+                onPress={() => data.ownerId && router.push({ pathname: "/user/[id]", params: { id: data.ownerId } })}
+                disabled={!data.ownerId}
+                hitSlop={6}
+              >
+                <Text style={styles.byline}>
+                  by <Text style={styles.bylineName}>@{data.ownerUsername ?? "someone"}</Text>
+                </Text>
+              </Pressable>
+              <Text style={styles.metaDot}>·</Text>
+              <Text style={styles.byline}>{timeAgo(data.createdAt)}</Text>
+            </View>
+            {data.city || data.location ? <Pill icon="location" label={data.city ?? data.location!} /> : null}
+            {data.description ? <Text style={styles.description}>{data.description}</Text> : null}
+
+            <View style={styles.likeRow}>
+              <LikeButton listId={data.id} liked={data.likedByMe} count={data.savesCount} />
+              {isOwner ? (
+                <Pressable
+                  onPress={toggleVisibility}
+                  disabled={togglingVis}
+                  style={({ pressed }) => [styles.visToggle, !isPublic && styles.visTogglePrivate, pressed && styles.pressed]}
+                  hitSlop={6}
+                >
+                  <Ionicons
+                    name={isPublic ? "globe-outline" : "lock-closed"}
+                    size={15}
+                    color={isPublic ? Star.ink : Star.surface}
+                  />
+                  <Text style={[styles.visToggleText, !isPublic && styles.visToggleTextPrivate]}>
+                    {isPublic ? "Public" : "Private"}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            <Text style={styles.sectionTitle}>
+              {data.places.length} {data.places.length === 1 ? "place" : "places"}
+            </Text>
+
+            {data.places.length === 0 ? (
+              <Card style={styles.empty}>
+                <Text style={styles.emptyText}>This list doesn&apos;t have any places yet.</Text>
+              </Card>
+            ) : (
+              data.places.map((place, i) => (
+                <Card key={place.id} onPress={() => router.push({ pathname: "/place/[id]", params: { id: place.id } })}>
+                  <View style={styles.placeRow}>
+                    <View style={styles.numberBadge}>
+                      <Text style={styles.numberText}>{i + 1}</Text>
+                    </View>
+                    <View style={styles.flex}>
+                      <Text style={styles.placeName}>{place.name}</Text>
+                      {place.address ? <Text style={styles.placeAddress}>{place.address}</Text> : null}
+                      {place.note ? <Text style={styles.placeNote}>{place.note}</Text> : null}
+                    </View>
+                  </View>
+                </Card>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const makeStyles = (Star: Palette) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: Star.base },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressed: { opacity: 0.6 },
+  deleteBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Star.surface,
+    borderWidth: 2,
+    borderColor: Star.ink,
+  },
+  headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
+  loader: { marginTop: 40 },
+  centerPad: { padding: 20 },
+  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
+  scroll: { paddingBottom: 36 },
+  body: { padding: 20, gap: 12 },
+  title: { fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  byline: { fontSize: 14, fontWeight: "600", color: Star.textMuted },
+  bylineName: { color: Star.pop, fontWeight: "800" },
+  metaDot: { color: Star.textMuted, fontWeight: "800" },
+  description: { fontSize: 15, fontWeight: "500", color: Star.text, lineHeight: 21 },
+  likeRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
+  visToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    backgroundColor: Star.surface,
+  },
+  visTogglePrivate: { backgroundColor: Star.ink },
+  visToggleText: { fontSize: 13, fontWeight: "800", color: Star.ink },
+  visToggleTextPrivate: { color: Star.surface },
+  sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4, marginTop: 4 },
+  empty: { alignItems: "center", paddingVertical: 20 },
+  emptyText: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
+  placeRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  numberBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Star.pop,
+    borderWidth: 2,
+    borderColor: Star.ink,
+  },
+  numberText: { fontSize: 14, fontWeight: "900", color: Star.surface },
+  placeName: { fontSize: 16, fontWeight: "800", color: Star.ink },
+  placeAddress: { fontSize: 13, fontWeight: "500", color: Star.textMuted, marginTop: 1 },
+  placeNote: { fontSize: 14, fontWeight: "500", color: Star.text, marginTop: 4 },
+});
