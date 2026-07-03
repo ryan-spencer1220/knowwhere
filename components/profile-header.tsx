@@ -13,11 +13,12 @@ export type ProfileHeaderProps = {
   username: string | null;
   bio: string | null;
   city: string | null;
-  stats: { label: string; value: number }[];
+  stats: { key: string; label: string; value: number }[];
   uploading?: boolean;
   uploadError?: string | null;
   onPickAvatar?: () => void;
   onSettings?: () => void;
+  onStatPress?: (key: string) => void;
   // Override the safe-area top padding (used by the design preview on web).
   topInset?: number;
 };
@@ -40,6 +41,7 @@ export function ProfileHeader({
   uploadError,
   onPickAvatar,
   onSettings,
+  onStatPress,
   topInset,
 }: ProfileHeaderProps) {
   const Star = useTheme();
@@ -93,10 +95,17 @@ export function ProfileHeader({
       <View style={styles.statsShadow}>
         <View style={styles.statsBox}>
           {stats.map((stat, i) => (
-            <View key={stat.label} style={[styles.statCol, i > 0 && styles.statColDivider]}>
+            <Pressable
+              key={stat.key}
+              onPress={onStatPress ? () => onStatPress(stat.key) : undefined}
+              disabled={!onStatPress}
+              accessibilityRole={onStatPress ? "button" : undefined}
+              accessibilityLabel={onStatPress ? `${stat.value} ${stat.label}` : undefined}
+              style={({ pressed }) => [styles.statCol, i > 0 && styles.statColDivider, pressed && onStatPress ? styles.statPressed : null]}
+            >
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -172,6 +181,7 @@ const makeStyles = (Star: Palette) =>
     },
     statCol: { flex: 1, alignItems: "center", gap: 2 },
     statColDivider: { borderLeftWidth: 2.5, borderLeftColor: Star.ink },
+    statPressed: { opacity: 0.55 },
     statValue: { fontSize: 24, fontWeight: "900", color: Star.pop },
     statLabel: { fontSize: 12, fontWeight: "700", color: Star.textMuted },
   });

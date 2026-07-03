@@ -126,14 +126,25 @@ export default function UserProfileScreen() {
 
             <View style={styles.statsRow}>
               {[
-                { label: "Lists", value: data.lists.length },
-                { label: "Followers", value: data.followers },
-                { label: "Following", value: data.following },
+                { key: "lists", label: "Lists", value: data.lists.length },
+                { key: "followers", label: "Followers", value: data.followers },
+                { key: "following", label: "Following", value: data.following },
               ].map((stat, i) => (
-                <View key={stat.label} style={[styles.statCol, i > 0 && styles.statColDivider]}>
+                <Pressable
+                  key={stat.key}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/connections/[id]",
+                      params: { id: data.profile.id, tab: stat.key, name: data.profile.display_name ?? "Profile" },
+                    })
+                  }
+                  style={({ pressed }) => [styles.statCol, i > 0 && styles.statColDivider, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${stat.value} ${stat.label}`}
+                >
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </Card>
