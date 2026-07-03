@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -18,14 +19,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { Texture } from "@/components/ui/kit";
-import { useAuth } from "@/lib/auth";
+import { isAppleSignInSupported, useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
 type Mode = "sign-in" | "sign-up";
 type FieldName = "name" | "username" | "email" | "password";
 
 export default function SignInScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithApple, signInWithGoogle } = useAuth();
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -104,6 +105,22 @@ export default function SignInScreen() {
       // On success the auth listener swaps the navigator to the tabs.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Shared wrapper for the Apple/Google flows: clears state, shows the spinner,
+  // and surfaces failures the same way the email form does. On success the auth
+  // listener swaps the navigator to the tabs.
+  const handleSocial = async (provider: () => Promise<boolean>) => {
+    setError(null);
+    setNotice(null);
+    setIsSubmitting(true);
+    try {
+      await provider();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't sign in. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -222,6 +239,38 @@ export default function SignInScreen() {
                   ) : (
                     <Text style={styles.ctaText}>{isSignUp ? "Create account" : "Let's go"}</Text>
                   )}
+                </Pressable>
+
+                {/* Social sign-in — Apple (iOS) is at least as prominent as email, per HIG. */}
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {isAppleSignInSupported ? (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={
+                      isSignUp
+                        ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+                        : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                    }
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={16}
+                    style={styles.appleButton}
+                    onPress={() => handleSocial(signInWithApple)}
+                  />
+                ) : null}
+
+                <Pressable
+                  onPress={() => handleSocial(signInWithGoogle)}
+                  disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Google"
+                  style={({ pressed }) => [styles.googleButton, pressed && styles.googleButtonPressed]}
+                >
+                  <Ionicons name="logo-google" size={18} color={Star.ink} />
+                  <Text style={styles.googleText}>Continue with Google</Text>
                 </Pressable>
 
                 <Text style={styles.legalText}>
@@ -429,6 +478,48 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   },
   forgotWrap: { alignSelf: "flex-end", marginTop: -6 },
   forgotText: { color: Star.pop, fontSize: 13, fontWeight: "800" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: Star.ink,
+    opacity: 0.15,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Star.textMuted,
+    letterSpacing: 1,
+  },
+  appleButton: {
+    height: 52,
+    width: "100%",
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    backgroundColor: Star.surface,
+  },
+  googleButtonPressed: {
+    transform: [{ translateY: 2 }],
+    opacity: 0.95,
+  },
+  googleText: {
+    color: Star.ink,
+    fontSize: 16,
+    fontWeight: "800",
+  },
   legalText: { fontSize: 12, fontWeight: "500", color: Star.textMuted, textAlign: "center", lineHeight: 18, marginTop: -4 },
   legalLink: { color: Star.pop, fontWeight: "800" },
 });
