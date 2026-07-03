@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -55,6 +56,47 @@ export function Screen({ children, scroll = true }: { children: ReactNode; scrol
         ) : (
           <View style={styles.staticContent}>{children}</View>
         )}
+      </SafeAreaView>
+    </View>
+  );
+}
+
+// Virtualized sibling of Screen for the long, growable lists (feed, explore,
+// profile). Renders a FlatList over the same mint/texture/safe-area shell and
+// reuses Screen's content padding + 16px gap, so the layout is identical to a
+// ScrollView of the same children — only now rows are windowed. `header`,
+// `footer`, and `empty` map to FlatList's header/footer/empty slots.
+export function ListScreen<T>({
+  data,
+  renderItem,
+  keyExtractor,
+  header,
+  footer,
+  empty,
+}: {
+  data: readonly T[];
+  renderItem: (item: T) => ReactElement | null;
+  keyExtractor: (item: T) => string;
+  header?: ReactNode;
+  footer?: ReactNode;
+  empty?: ReactNode;
+}) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.screenRoot}>
+      <Texture />
+      <SafeAreaView style={styles.flex} edges={["top"]}>
+        <FlatList
+          data={data}
+          keyExtractor={keyExtractor}
+          renderItem={({ item }) => renderItem(item)}
+          ListHeaderComponent={header as ReactElement}
+          ListFooterComponent={footer as ReactElement}
+          ListEmptyComponent={empty as ReactElement}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        />
       </SafeAreaView>
     </View>
   );

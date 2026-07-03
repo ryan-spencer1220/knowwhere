@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { Avatar, initialsFrom } from "@/components/avatar";
 import { ListCover } from "@/components/list-cover";
-import { Card, ErrorState, Pill, Screen } from "@/components/ui/kit";
+import { Card, ErrorState, ListScreen, Pill } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { pickAndUploadAvatar } from "@/lib/avatar";
@@ -39,97 +39,100 @@ export default function ProfileScreen() {
     }
   };
 
+  const header = data ? (
+    <>
+      {/* Identity + stats in one card */}
+      <Card style={styles.headerCard}>
+        <View style={styles.topRow}>
+          <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
+            <Avatar url={localAvatar ?? data.profile.avatar_url} initials={initialsFrom(data.profile.display_name, data.profile.username)} size={72} />
+            <View style={styles.cameraBadge}>
+              {uploading ? (
+                <ActivityIndicator size="small" color={Star.surface} />
+              ) : (
+                <Ionicons name="camera" size={14} color={Star.surface} />
+              )}
+            </View>
+          </Pressable>
+          <View style={styles.headerInfo}>
+            <Text style={styles.name}>{data.profile.display_name ?? "You"}</Text>
+            {data.profile.username ? <Text style={styles.handle}>@{data.profile.username}</Text> : null}
+          </View>
+          <Pressable
+            onPress={() => router.push("/settings")}
+            style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
+            hitSlop={8}
+            accessibilityLabel="Settings"
+          >
+            <Ionicons name="settings-outline" size={20} color={Star.ink} />
+          </Pressable>
+        </View>
+
+        {data.profile.bio ? <Text style={styles.bio}>{data.profile.bio}</Text> : null}
+        {data.profile.city ? <Pill icon="location" label={data.profile.city} /> : null}
+        {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
+
+        <View style={styles.divider} />
+
+        <View style={styles.statsRow}>
+          {[
+            { label: "Lists", value: data.lists.length },
+            { label: "Followers", value: data.followers },
+            { label: "Following", value: data.following },
+          ].map((stat, i) => (
+            <View key={stat.label} style={[styles.statCol, i > 0 && styles.statColDivider]}>
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+
+      <Text style={styles.sectionTitle}>Your lists</Text>
+    </>
+  ) : undefined;
+
   return (
-    <Screen>
-      {loading ? (
-        <ActivityIndicator color={Star.ink} style={styles.loader} />
-      ) : error || !data ? (
-        <ErrorState message={error ?? "Could not load your profile."} onRetry={refetch} />
-      ) : (
-        <>
-          {/* Identity + stats in one card */}
-          <Card style={styles.headerCard}>
-            <View style={styles.topRow}>
-              <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
-                <Avatar url={localAvatar ?? data.profile.avatar_url} initials={initialsFrom(data.profile.display_name, data.profile.username)} size={72} />
-                <View style={styles.cameraBadge}>
-                  {uploading ? (
-                    <ActivityIndicator size="small" color={Star.surface} />
-                  ) : (
-                    <Ionicons name="camera" size={14} color={Star.surface} />
-                  )}
-                </View>
-              </Pressable>
-              <View style={styles.headerInfo}>
-                <Text style={styles.name}>{data.profile.display_name ?? "You"}</Text>
-                {data.profile.username ? <Text style={styles.handle}>@{data.profile.username}</Text> : null}
-              </View>
-              <Pressable
-                onPress={() => router.push("/settings")}
-                style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
-                hitSlop={8}
-                accessibilityLabel="Settings"
-              >
-                <Ionicons name="settings-outline" size={20} color={Star.ink} />
-              </Pressable>
-            </View>
-
-            {data.profile.bio ? <Text style={styles.bio}>{data.profile.bio}</Text> : null}
-            {data.profile.city ? <Pill icon="location" label={data.profile.city} /> : null}
-            {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
-
-            <View style={styles.divider} />
-
-            <View style={styles.statsRow}>
-              {[
-                { label: "Lists", value: data.lists.length },
-                { label: "Followers", value: data.followers },
-                { label: "Following", value: data.following },
-              ].map((stat, i) => (
-                <View key={stat.label} style={[styles.statCol, i > 0 && styles.statColDivider]}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
+    <ListScreen
+      data={data?.lists ?? []}
+      keyExtractor={(list) => list.id}
+      header={header}
+      empty={
+        loading ? (
+          <ActivityIndicator color={Star.ink} style={styles.loader} />
+        ) : error || !data ? (
+          <ErrorState message={error ?? "Could not load your profile."} onRetry={refetch} />
+        ) : (
+          <Card style={styles.empty}>
+            <Text style={styles.emptyTitle}>No lists yet</Text>
+            <Text style={styles.emptyBody}>Tap Add to map out your first list of places.</Text>
           </Card>
-
-          {/* Lists */}
-          <Text style={styles.sectionTitle}>Your lists</Text>
-          {data.lists.length === 0 ? (
-            <Card style={styles.empty}>
-              <Text style={styles.emptyTitle}>No lists yet</Text>
-              <Text style={styles.emptyBody}>Tap Add to map out your first list of places.</Text>
-            </Card>
-          ) : (
-            data.lists.map((list) => (
-              <Card
-                key={list.id}
-                cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
-                onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
-              >
-                <View style={styles.listTitleRow}>
-                  <Text style={[styles.listTitle, styles.flex]}>{list.title}</Text>
-                  {!list.isPublic ? (
-                    <View style={styles.privateBadge}>
-                      <Ionicons name="lock-closed" size={11} color={Star.surface} />
-                      <Text style={styles.privateBadgeText}>Private</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
-                <View style={styles.metaRow}>
-                  <Text style={styles.meta}>
-                    <Text style={styles.metaStrong}>{list.placesCount}</Text> places
-                  </Text>
-                  <Text style={styles.meta}>Updated {timeAgo(list.createdAt)}</Text>
-                </View>
-              </Card>
-            ))
-          )}
-        </>
+        )
+      }
+      renderItem={(list) => (
+        <Card
+          cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
+          onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
+        >
+          <View style={styles.listTitleRow}>
+            <Text style={[styles.listTitle, styles.flex]}>{list.title}</Text>
+            {!list.isPublic ? (
+              <View style={styles.privateBadge}>
+                <Ionicons name="lock-closed" size={11} color={Star.surface} />
+                <Text style={styles.privateBadgeText}>Private</Text>
+              </View>
+            ) : null}
+          </View>
+          {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
+          <View style={styles.metaRow}>
+            <Text style={styles.meta}>
+              <Text style={styles.metaStrong}>{list.placesCount}</Text> places
+            </Text>
+            <Text style={styles.meta}>Updated {timeAgo(list.createdAt)}</Text>
+          </View>
+        </Card>
       )}
-    </Screen>
+    />
   );
 }
 
