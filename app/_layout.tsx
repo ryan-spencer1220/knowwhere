@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -13,6 +14,10 @@ import { ThemeProvider as ColorThemeProvider } from '@/lib/theme';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+// expo-router renders this whenever a screen throws during render, replacing
+// the redbox/blank screen with a themed, retryable fallback.
+export { AppErrorBoundary as ErrorBoundary };
 
 function RootNavigator() {
   const { session, isLoading } = useAuth();

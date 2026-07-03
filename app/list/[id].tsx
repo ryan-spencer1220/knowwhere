@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
-import { Card, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { deleteList, getListDetail, setListVisibility, timeAgo, type ListDetail } from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
@@ -19,7 +19,7 @@ export default function ListDetailScreen() {
   const { session } = useAuth();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = useFocusQuery<ListDetail | null>(() =>
+  const { data, loading, error, refetch } = useFocusQuery<ListDetail | null>(() =>
     id ? getListDetail(id, session?.user.id ?? null) : Promise.resolve(null),
   );
 
@@ -130,9 +130,7 @@ export default function ListDetailScreen() {
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : error || !data ? (
         <View style={styles.centerPad}>
-          <Card>
-            <Text style={styles.errorText}>{error ?? "Could not load this list."}</Text>
-          </Card>
+          <ErrorState message={error ?? "Could not load this list."} onRetry={refetch} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -239,7 +237,6 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
-  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
   scroll: { paddingBottom: 36 },
   body: { padding: 20, gap: 12 },
   title: { fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },

@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { Avatar, initialsFrom } from "@/components/avatar";
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
-import { Card, Heading, Pill, Screen } from "@/components/ui/kit";
+import { Card, ErrorState, Heading, Pill, Screen } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { getTrendingLists, type ListCard } from "@/lib/lists";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
@@ -59,15 +59,10 @@ function ListsTab({ query }: { query: ReturnType<typeof useFocusQuery<ListCard[]
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = query;
+  const { data, loading, error, refetch } = query;
 
   if (loading) return <ActivityIndicator color={Star.ink} style={styles.loader} />;
-  if (error)
-    return (
-      <Card>
-        <Text style={styles.errorText}>{error}</Text>
-      </Card>
-    );
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data || data.length === 0)
     return (
       <Card style={styles.empty}>
@@ -106,15 +101,10 @@ function PeopleTab({ query }: { query: ReturnType<typeof useFocusQuery<ExploreUs
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = query;
+  const { data, loading, error, refetch } = query;
 
   if (loading) return <ActivityIndicator color={Star.ink} style={styles.loader} />;
-  if (error)
-    return (
-      <Card>
-        <Text style={styles.errorText}>{error}</Text>
-      </Card>
-    );
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data || data.length === 0)
     return (
       <Card style={styles.empty}>
@@ -149,7 +139,6 @@ function PeopleTab({ query }: { query: ReturnType<typeof useFocusQuery<ExploreUs
 const makeStyles = (Star: Palette) => StyleSheet.create({
   flex: { flex: 1 },
   loader: { marginTop: 40 },
-  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
   empty: { alignItems: "center", gap: 6, paddingVertical: 28 },
   emptyTitle: { fontSize: 18, fontWeight: "900", color: Star.ink },
   emptyBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center" },

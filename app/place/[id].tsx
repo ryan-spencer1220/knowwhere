@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Card, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { formatTypes, getPlaceScreen, priceLabel, type PlaceScreenData } from "@/lib/places";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -14,7 +14,7 @@ export default function PlaceScreen() {
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = useFocusQuery<PlaceScreenData | null>(() =>
+  const { data, loading, error, refetch } = useFocusQuery<PlaceScreenData | null>(() =>
     id ? getPlaceScreen(id) : Promise.resolve(null),
   );
 
@@ -54,9 +54,7 @@ export default function PlaceScreen() {
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : error || !stored ? (
         <View style={styles.centerPad}>
-          <Card>
-            <Text style={styles.errorText}>{error ?? "Could not load this place."}</Text>
-          </Card>
+          <ErrorState message={error ?? "Could not load this place."} onRetry={refetch} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -174,7 +172,6 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   pressed: { opacity: 0.7 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
-  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
   scroll: { padding: 20, paddingBottom: 40, gap: 12 },
   title: { fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
   statRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
