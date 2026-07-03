@@ -113,12 +113,26 @@ export function Button({
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
       {...props}
       disabled={props.disabled || loading}
       style={({ pressed }) => [styles.button, pressed && styles.buttonPressed, style]}
     >
       {loading ? <ActivityIndicator color={Star.pop} /> : <Text style={styles.buttonText}>{label}</Text>}
     </Pressable>
+  );
+}
+
+// Error card with the failure message and an optional "Try again" button.
+// Pair with a query's `refetch` so a transient network failure is recoverable.
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Card style={styles.errorState}>
+      <Text style={styles.errorStateText}>{message}</Text>
+      {onRetry ? <Button label="Try again" onPress={onRetry} style={styles.errorStateBtn} /> : null}
+    </Card>
   );
 }
 
@@ -295,6 +309,9 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
+  errorState: { alignItems: "center", gap: 12, paddingVertical: 24 },
+  errorStateText: { fontSize: 14, fontWeight: "600", color: Star.danger, textAlign: "center" },
+  errorStateBtn: { alignSelf: "stretch", paddingHorizontal: 28 },
   pillAccent: { backgroundColor: Star.pop },
   pillText: {
     fontSize: 12,

@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, initialsFrom } from "@/components/avatar";
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
-import { Card, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { timeAgo } from "@/lib/lists";
 import { blockUser, isBlocked, REPORT_REASONS, reportContent, unblockUser } from "@/lib/moderation";
@@ -21,7 +21,7 @@ export default function UserProfileScreen() {
   const { session } = useAuth();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = useFocusQuery<UserProfileData | null>(() =>
+  const { data, loading, error, refetch } = useFocusQuery<UserProfileData | null>(() =>
     id ? getUserProfile(id, session?.user.id ?? null) : Promise.resolve(null),
   );
 
@@ -105,9 +105,7 @@ export default function UserProfileScreen() {
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : error || !data ? (
         <View style={styles.centerPad}>
-          <Card>
-            <Text style={styles.errorText}>{error ?? "Could not load this profile."}</Text>
-          </Card>
+          <ErrorState message={error ?? "Could not load this profile."} onRetry={refetch} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -183,7 +181,6 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
-  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
   scroll: { padding: 20, paddingBottom: 36, gap: 16 },
   headerCard: { padding: 18, gap: 12 },
   topRow: { flexDirection: "row", alignItems: "center", gap: 16 },

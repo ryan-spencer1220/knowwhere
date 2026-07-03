@@ -40,6 +40,8 @@ export function LikeButton({ listId, liked, count }: { listId: string; liked: bo
     <Pressable
       onPress={toggle}
       disabled={busy}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isLiked }}
       accessibilityLabel={isLiked ? "Unlike list" : "Like list"}
       style={({ pressed }) => [styles.btn, isLiked && styles.btnLiked, pressed && styles.pressed]}
     >

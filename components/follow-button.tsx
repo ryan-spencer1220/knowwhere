@@ -41,6 +41,9 @@ export function FollowButton({
     <Pressable
       onPress={toggle}
       disabled={busy}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isFollowing }}
+      accessibilityLabel={isFollowing ? "Unfollow" : "Follow"}
       style={({ pressed }) => [styles.btn, isFollowing && styles.btnFollowing, pressed && styles.pressed]}
     >
       <Text style={[styles.text, isFollowing && styles.textFollowing]}>{isFollowing ? "Following" : "Follow"}</Text>

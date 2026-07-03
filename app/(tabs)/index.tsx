@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
-import { Card, Heading, Pill, Screen } from "@/components/ui/kit";
+import { Card, ErrorState, Heading, Pill, Screen } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { getFeedLists, timeAgo, type ListCard } from "@/lib/lists";
@@ -35,9 +35,7 @@ export default function FeedScreen() {
       {feed.loading ? (
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : feed.error ? (
-        <Card>
-          <Text style={styles.errorText}>{feed.error}</Text>
-        </Card>
+        <ErrorState message={feed.error} onRetry={feed.refetch} />
       ) : !isEmpty ? (
         feed.data!.map((item) => (
           <Card
@@ -102,7 +100,6 @@ export default function FeedScreen() {
 const makeStyles = (Star: Palette) => StyleSheet.create({
   flex: { flex: 1 },
   loader: { marginTop: 24 },
-  errorText: { fontSize: 14, fontWeight: "600", color: Star.danger },
   empty: { alignItems: "center", gap: 6, paddingVertical: 24 },
   emptyTitle: { fontSize: 18, fontWeight: "900", color: Star.ink },
   emptyBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center" },

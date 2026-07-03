@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { Avatar, initialsFrom } from "@/components/avatar";
 import { ListCover } from "@/components/list-cover";
-import { Card, Pill, Screen } from "@/components/ui/kit";
+import { Card, ErrorState, Pill, Screen } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { pickAndUploadAvatar } from "@/lib/avatar";
@@ -17,7 +17,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, loading, error } = useFocusQuery<ProfileScreenData | null>(() =>
+  const { data, loading, error, refetch } = useFocusQuery<ProfileScreenData | null>(() =>
     session ? getProfileScreen(session.user.id) : Promise.resolve(null),
   );
 
@@ -44,9 +44,7 @@ export default function ProfileScreen() {
       {loading ? (
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : error || !data ? (
-        <Card>
-          <Text style={styles.errorText}>{error ?? "Could not load your profile."}</Text>
-        </Card>
+        <ErrorState message={error ?? "Could not load your profile."} onRetry={refetch} />
       ) : (
         <>
           {/* Identity + stats in one card */}
