@@ -115,7 +115,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.rspencer1220.KnowWhere"
+      "package": "com.rspencer1220.KnowWhere",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "single",
@@ -152,6 +157,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a50c5cff-bd9b-4db4-bd36-728baeaded83"
+      }
+    },
+    "owner": "rspencer1220"
   }
 }
