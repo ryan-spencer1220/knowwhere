@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
-import { Pill } from "@/components/ui/kit";
+import { Texture } from "@/components/ui/kit";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
 export type ProfileHeaderProps = {
@@ -49,6 +49,7 @@ export function ProfileHeader({
 
   return (
     <View style={[styles.wrap, { paddingTop }]}>
+      <Texture />
       <View style={styles.topRow}>
         <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
           <Avatar url={avatarUrl} initials={initials} size={72} />
@@ -62,7 +63,18 @@ export function ProfileHeader({
         </Pressable>
         <View style={styles.info}>
           <Text style={styles.name}>{displayName ?? "You"}</Text>
-          {username ? <Text style={styles.handle}>@{username}</Text> : null}
+          {username || city ? (
+            <View style={styles.handleRow}>
+              {username ? <Text style={styles.handle}>@{username}</Text> : null}
+              {username && city ? <Text style={styles.dot}>·</Text> : null}
+              {city ? (
+                <>
+                  <Ionicons name="location" size={13} color={Star.textMuted} />
+                  <Text style={styles.locText}>{city}</Text>
+                </>
+              ) : null}
+            </View>
+          ) : null}
         </View>
         <Pressable
           onPress={onSettings}
@@ -76,11 +88,6 @@ export function ProfileHeader({
       </View>
 
       {bio ? <Text style={styles.bio}>{bio}</Text> : null}
-      {city ? (
-        <View style={styles.pillRow}>
-          <Pill icon="location" label={city} />
-        </View>
-      ) : null}
       {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
 
       <View style={styles.statsShadow}>
@@ -103,10 +110,18 @@ const makeStyles = (Star: Palette) =>
       backgroundColor: Star.surface,
       paddingHorizontal: 20,
       paddingBottom: 18,
-      gap: 14,
-      // Chunky ink rule keeps the app's identity while the panel stays flush.
-      borderBottomWidth: 2.5,
+      gap: 12,
+      overflow: "hidden",
+      // Chunky ink rule + a soft drop shadow so the white panel lifts off the
+      // mint instead of reading as a flat block. The dot Texture behind adds
+      // subtle life to the white.
+      borderBottomWidth: 2,
       borderBottomColor: Star.ink,
+      shadowColor: Star.ink,
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 6,
     },
     topRow: { flexDirection: "row", alignItems: "center", gap: 16 },
     avatarWrap: { position: "relative" },
@@ -123,7 +138,10 @@ const makeStyles = (Star: Palette) =>
       borderWidth: 2,
       borderColor: Star.surface,
     },
-    info: { flex: 1, gap: 2 },
+    info: { flex: 1, gap: 3 },
+    handleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    dot: { fontSize: 14, fontWeight: "800", color: Star.textMuted },
+    locText: { fontSize: 13, fontWeight: "700", color: Star.textMuted },
     settingsBtn: {
       width: 40,
       height: 40,
@@ -138,7 +156,6 @@ const makeStyles = (Star: Palette) =>
     name: { fontSize: 24, fontWeight: "900", color: Star.ink, letterSpacing: -0.5 },
     handle: { fontSize: 14, fontWeight: "700", color: Star.pop },
     bio: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
-    pillRow: { flexDirection: "row" },
     errorText: { fontSize: 13, fontWeight: "600", color: Star.danger },
     // Lifted stats panel: white card floating on a hard offset shadow tinted
     // with the theme accent, and accent-colored numbers — both follow the
