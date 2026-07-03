@@ -5,6 +5,7 @@
 //
 // Deploy:  supabase functions deploy submit-report
 // Optional email notifications: supabase secrets set RESEND_API_KEY=<key>
+//   and (optional) MODERATOR_EMAIL=<address> to change the recipient.
 // (SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are injected.)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -15,7 +16,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MODERATOR_EMAIL = "ryan.spencer1220@gmail.com";
+const MODERATOR_EMAIL = Deno.env.get("MODERATOR_EMAIL") ?? "ryan.spencer1220@gmail.com";
 const VALID_TYPES = new Set(["list", "user", "place"]);
 
 function json(body: unknown, status = 200) {
