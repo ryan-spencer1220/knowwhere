@@ -55,14 +55,22 @@ export default function ProfileScreen() {
         bio={data.profile.bio}
         city={data.profile.city}
         stats={[
-          { label: "Lists", value: data.lists.length },
-          { label: "Followers", value: data.followers },
-          { label: "Following", value: data.following },
+          { key: "lists", label: "Lists", value: data.lists.length },
+          { key: "followers", label: "Followers", value: data.followers },
+          { key: "following", label: "Following", value: data.following },
         ]}
         uploading={uploading}
         uploadError={uploadError}
         onPickAvatar={onPickAvatar}
         onSettings={() => router.push("/settings")}
+        onStatPress={(key) =>
+          session
+            ? router.push({
+                pathname: "/connections/[id]",
+                params: { id: session.user.id, tab: key, name: data.profile.display_name ?? "You" },
+              })
+            : undefined
+        }
       />
       <Text style={styles.sectionTitle}>Your lists</Text>
     </>

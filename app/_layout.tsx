@@ -50,6 +50,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="list/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="connections/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="place/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ headerShown: false }} />
       </Stack.Protected>

@@ -95,6 +95,52 @@ export async function getUserProfile(userId: string, currentUserId: string | nul
   };
 }
 
+// Shared loader for the connections screen: resolves a set of follow rows into
+// full user cards (avatar + follow state for the viewer), minus blocked users.
+async function usersFromFollows(
+  pick: "follower_id" | "following_id",
+  match: "follower_id" | "following_id",
+  userId: string,
+  currentUserId: string | null,
+): Promise<ExploreUser[]> {
+  const { data: rows, error } = await supabase.from("follows").select(pick).eq(match, userId);
+  if (error) throw error;
+  const ids = (rows ?? []).map((r) => (r as Record<string, string>)[pick]);
+  if (ids.length === 0) return [];
+
+  const [profilesRes, followingRes] = await Promise.all([
+    supabase.from("profiles").select("id, username, display_name, bio, city, avatar_url").in("id", ids),
+    currentUserId
+      ? supabase.from("follows").select("following_id").eq("follower_id", currentUserId)
+      : Promise.resolve({ data: [] as { following_id: string }[], error: null }),
+  ]);
+  if (profilesRes.error) throw profilesRes.error;
+
+  const followingIds = new Set((followingRes.data ?? []).map((f) => f.following_id));
+  const blocked = new Set(await getBlockedIds(currentUserId));
+  return (profilesRes.data ?? [])
+    .filter((p) => !blocked.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      username: p.username,
+      displayName: p.display_name,
+      bio: p.bio,
+      city: p.city,
+      avatarUrl: p.avatar_url,
+      isFollowing: followingIds.has(p.id),
+    }));
+}
+
+// Users who follow `userId` (rows where following_id = userId).
+export function getFollowers(userId: string, currentUserId: string | null): Promise<ExploreUser[]> {
+  return usersFromFollows("follower_id", "following_id", userId, currentUserId);
+}
+
+// Users `userId` follows (rows where follower_id = userId).
+export function getFollowing(userId: string, currentUserId: string | null): Promise<ExploreUser[]> {
+  return usersFromFollows("following_id", "follower_id", userId, currentUserId);
+}
+
 export async function followUser(currentUserId: string, targetId: string): Promise<void> {
   const { error } = await supabase.from("follows").insert({ follower_id: currentUserId, following_id: targetId });
   if (error) throw error;
