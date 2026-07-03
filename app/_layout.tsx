@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { AppErrorBoundary } from '@/components/app-error-boundary';
+import { OfflineBanner } from '@/components/offline-banner';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +70,7 @@ export default function RootLayout() {
       <ColorThemeProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <RootNavigator />
+          <OfflineBanner />
           <StatusBar style="auto" />
         </ThemeProvider>
       </ColorThemeProvider>
