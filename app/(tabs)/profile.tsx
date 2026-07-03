@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Avatar, initialsFrom } from "@/components/avatar";
+import { initialsFrom } from "@/components/avatar";
 import { ListCover } from "@/components/list-cover";
-import { Card, ErrorState, ListScreen, Pill } from "@/components/ui/kit";
+import { ProfileHeader } from "@/components/profile-header";
+import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { pickAndUploadAvatar } from "@/lib/avatar";
@@ -17,6 +19,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const { data, loading, error, refetch } = useFocusQuery<ProfileScreenData | null>(() =>
     session ? getProfileScreen(session.user.id) : Promise.resolve(null),
   );
@@ -39,161 +42,125 @@ export default function ProfileScreen() {
     }
   };
 
+  // Header (identity + stats) plus the "Your lists" section title. Rendered only
+  // once profile data is loaded; the full-bleed white panel handles its own top
+  // safe-area inset so it paints under the status bar.
   const header = data ? (
     <>
-      {/* Identity + stats in one card */}
-      <Card style={styles.headerCard}>
-        <View style={styles.topRow}>
-          <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
-            <Avatar url={localAvatar ?? data.profile.avatar_url} initials={initialsFrom(data.profile.display_name, data.profile.username)} size={72} />
-            <View style={styles.cameraBadge}>
-              {uploading ? (
-                <ActivityIndicator size="small" color={Star.surface} />
-              ) : (
-                <Ionicons name="camera" size={14} color={Star.surface} />
-              )}
-            </View>
-          </Pressable>
-          <View style={styles.headerInfo}>
-            <Text style={styles.name}>{data.profile.display_name ?? "You"}</Text>
-            {data.profile.username ? <Text style={styles.handle}>@{data.profile.username}</Text> : null}
-          </View>
-          <Pressable
-            onPress={() => router.push("/settings")}
-            style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
-            hitSlop={8}
-            accessibilityLabel="Settings"
-          >
-            <Ionicons name="settings-outline" size={20} color={Star.ink} />
-          </Pressable>
-        </View>
-
-        {data.profile.bio ? <Text style={styles.bio}>{data.profile.bio}</Text> : null}
-        {data.profile.city ? <Pill icon="location" label={data.profile.city} /> : null}
-        {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
-
-        <View style={styles.divider} />
-
-        <View style={styles.statsRow}>
-          {[
-            { label: "Lists", value: data.lists.length },
-            { label: "Followers", value: data.followers },
-            { label: "Following", value: data.following },
-          ].map((stat, i) => (
-            <View key={stat.label} style={[styles.statCol, i > 0 && styles.statColDivider]}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
-      </Card>
-
+      <ProfileHeader
+        avatarUrl={localAvatar ?? data.profile.avatar_url}
+        initials={initialsFrom(data.profile.display_name, data.profile.username)}
+        displayName={data.profile.display_name}
+        username={data.profile.username}
+        bio={data.profile.bio}
+        city={data.profile.city}
+        stats={[
+          { label: "Lists", value: data.lists.length },
+          { label: "Followers", value: data.followers },
+          { label: "Following", value: data.following },
+        ]}
+        uploading={uploading}
+        uploadError={uploadError}
+        onPickAvatar={onPickAvatar}
+        onSettings={() => router.push("/settings")}
+      />
       <Text style={styles.sectionTitle}>Your lists</Text>
     </>
-  ) : undefined;
+  ) : null;
+
+  // Loading/error have no header, so center them below the status bar; the
+  // no-lists card sits inline under the section title.
+  const empty = loading ? (
+    <View style={[styles.centered, { paddingTop: insets.top + 100 }]}>
+      <ActivityIndicator color={Star.ink} />
+    </View>
+  ) : error || !data ? (
+    <View style={[styles.centered, { paddingTop: insets.top + 100 }]}>
+      <ErrorState message={error ?? "Could not load your profile."} onRetry={refetch} />
+    </View>
+  ) : (
+    <View style={styles.rowPad}>
+      <Card style={styles.emptyCard}>
+        <Text style={styles.emptyTitle}>No lists yet</Text>
+        <Text style={styles.emptyBody}>Tap Add to map out your first list of places.</Text>
+      </Card>
+    </View>
+  );
 
   return (
-    <ListScreen
-      data={data?.lists ?? []}
-      keyExtractor={(list) => list.id}
-      header={header}
-      empty={
-        loading ? (
-          <ActivityIndicator color={Star.ink} style={styles.loader} />
-        ) : error || !data ? (
-          <ErrorState message={error ?? "Could not load your profile."} onRetry={refetch} />
-        ) : (
-          <Card style={styles.empty}>
-            <Text style={styles.emptyTitle}>No lists yet</Text>
-            <Text style={styles.emptyBody}>Tap Add to map out your first list of places.</Text>
-          </Card>
-        )
-      }
-      renderItem={(list) => (
-        <Card
-          cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
-          onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
-        >
-          <View style={styles.listTitleRow}>
-            <Text style={[styles.listTitle, styles.flex]}>{list.title}</Text>
-            {!list.isPublic ? (
-              <View style={styles.privateBadge}>
-                <Ionicons name="lock-closed" size={11} color={Star.surface} />
-                <Text style={styles.privateBadgeText}>Private</Text>
+    <View style={styles.root}>
+      <Texture />
+      <FlatList
+        data={data?.lists ?? []}
+        keyExtractor={(list) => list.id}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ItemSeparatorComponent={() => <View style={styles.sep} />}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 36 }]}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item: list }) => (
+          <View style={styles.rowPad}>
+            <Card
+              cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
+              onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
+            >
+              <View style={styles.listTitleRow}>
+                <Text style={[styles.listTitle, styles.flex]}>{list.title}</Text>
+                {!list.isPublic ? (
+                  <View style={styles.privateBadge}>
+                    <Ionicons name="lock-closed" size={11} color={Star.surface} />
+                    <Text style={styles.privateBadgeText}>Private</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+              {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>
+                  <Text style={styles.metaStrong}>{list.placesCount}</Text> places
+                </Text>
+                <Text style={styles.meta}>Updated {timeAgo(list.createdAt)}</Text>
+              </View>
+            </Card>
           </View>
-          {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
-          <View style={styles.metaRow}>
-            <Text style={styles.meta}>
-              <Text style={styles.metaStrong}>{list.placesCount}</Text> places
-            </Text>
-            <Text style={styles.meta}>Updated {timeAgo(list.createdAt)}</Text>
-          </View>
-        </Card>
-      )}
-    />
+        )}
+      />
+    </View>
   );
 }
 
-const makeStyles = (Star: Palette) => StyleSheet.create({
-  loader: { marginTop: 40 },
-  errorText: { fontSize: 13, fontWeight: "600", color: Star.danger },
-  headerCard: { padding: 18, gap: 12 },
-  topRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  avatarWrap: { position: "relative" },
-  cameraBadge: {
-    position: "absolute",
-    right: -2,
-    bottom: -2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.ink,
-    borderWidth: 2,
-    borderColor: Star.surface,
-  },
-  headerInfo: { flex: 1, gap: 2 },
-  settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.base,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
-  settingsBtnPressed: { opacity: 0.6 },
-  name: { fontSize: 22, fontWeight: "900", color: Star.ink, letterSpacing: -0.5 },
-  handle: { fontSize: 14, fontWeight: "700", color: Star.pop },
-  bio: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
-  divider: { height: 1.5, backgroundColor: "rgba(20,18,16,0.1)", marginTop: 2 },
-  statsRow: { flexDirection: "row" },
-  statCol: { flex: 1, alignItems: "center", gap: 1 },
-  statColDivider: { borderLeftWidth: 1.5, borderLeftColor: "rgba(20,18,16,0.1)" },
-  statValue: { fontSize: 22, fontWeight: "900", color: Star.ink },
-  statLabel: { fontSize: 12, fontWeight: "700", color: Star.textMuted },
-  sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4, marginTop: 4 },
-  flex: { flex: 1 },
-  listTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  listTitle: { fontSize: 18, fontWeight: "800", color: Star.ink, letterSpacing: -0.3 },
-  privateBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: Star.ink,
-  },
-  privateBadgeText: { fontSize: 11, fontWeight: "800", color: Star.surface },
-  metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
-  meta: { fontSize: 13, fontWeight: "600", color: Star.textMuted },
-  metaStrong: { color: Star.ink, fontWeight: "800" },
-  empty: { alignItems: "center", gap: 6, paddingVertical: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: "900", color: Star.ink },
-  emptyBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center" },
-});
+const makeStyles = (Star: Palette) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: Star.base },
+    listContent: { flexGrow: 1 },
+    rowPad: { paddingHorizontal: 20 },
+    sep: { height: 16 },
+    centered: { paddingHorizontal: 20, alignItems: "center" },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: "900",
+      color: Star.ink,
+      letterSpacing: -0.4,
+      paddingHorizontal: 20,
+      marginTop: 18,
+      marginBottom: 16,
+    },
+    flex: { flex: 1 },
+    listTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    listTitle: { fontSize: 18, fontWeight: "800", color: Star.ink, letterSpacing: -0.3 },
+    privateBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: Star.ink,
+    },
+    privateBadgeText: { fontSize: 11, fontWeight: "800", color: Star.surface },
+    metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
+    meta: { fontSize: 13, fontWeight: "600", color: Star.textMuted },
+    metaStrong: { color: Star.ink, fontWeight: "800" },
+    emptyCard: { alignItems: "center", gap: 6, paddingVertical: 24 },
+    emptyTitle: { fontSize: 18, fontWeight: "900", color: Star.ink },
+    emptyBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center" },
+  });
