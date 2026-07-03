@@ -9,8 +9,12 @@ import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { OfflineBanner } from '@/components/offline-banner';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { initSentry, Sentry, sentryEnabled } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';
 import { ThemeProvider as ColorThemeProvider } from '@/lib/theme';
+
+// Start crash reporting as early as possible (no-op without a DSN).
+initSentry();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -62,7 +66,7 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
@@ -77,3 +81,6 @@ export default function RootLayout() {
     </AuthProvider>
   );
 }
+
+// Sentry.wrap adds touch/navigation context to reports; only wrap when enabled.
+export default sentryEnabled ? Sentry.wrap(RootLayout) : RootLayout;

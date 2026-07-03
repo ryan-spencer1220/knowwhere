@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Button, Texture } from "@/components/ui/kit";
+import { captureError } from "@/lib/sentry";
 import { useThemedStyles, type Palette } from "@/lib/theme";
 
 /**
@@ -14,6 +16,10 @@ import { useThemedStyles, type Palette } from "@/lib/theme";
  */
 export function AppErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
   const styles = useThemedStyles(makeStyles);
+
+  // Report the crash (no-op until a Sentry DSN is configured).
+  useEffect(() => captureError(error), [error]);
+
   return (
     <View style={styles.root}>
       <Texture />
