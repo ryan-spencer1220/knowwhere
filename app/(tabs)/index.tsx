@@ -49,10 +49,10 @@ export default function FeedScreen() {
       footer={
         // Discover people to follow, shown only while the feed is empty.
         isEmpty ? (
-          <>
+          <View style={styles.suggestions}>
             <Text style={styles.sectionTitle}>People to follow</Text>
             {suggestions.loading ? (
-              <ActivityIndicator color={Star.ink} style={styles.loader} />
+              <ActivityIndicator color={Star.ink} />
             ) : !suggestions.data || suggestions.data.length === 0 ? (
               <Card style={styles.empty}>
                 <Text style={styles.emptyBody}>No one to suggest yet — invite some friends!</Text>
@@ -75,7 +75,7 @@ export default function FeedScreen() {
                 </Card>
               ))
             )}
-          </>
+          </View>
         ) : null
       }
       renderItem={(item) => (
@@ -113,7 +113,8 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 1 },
   meta: { fontSize: 13, fontWeight: "600", color: Star.textMuted },
   metaStrong: { color: Star.ink, fontWeight: "800" },
-  sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4, marginTop: 4 },
+  suggestions: { gap: 16 },
+  sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4 },
   suggestRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   suggestInfo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: {
