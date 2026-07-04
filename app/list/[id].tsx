@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AddPlaceToList } from "@/components/add-place-to-list";
 import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
 import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
-import { deleteList, getListDetail, setListVisibility, timeAgo, type ListDetail } from "@/lib/lists";
+import { deleteList, getListDetail, removePlaceFromList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -69,6 +70,24 @@ export default function ListDetailScreen() {
         },
       ],
     );
+  };
+
+  const confirmRemovePlace = (place: PlaceItem) => {
+    Alert.alert("Remove place", `Remove "${place.name}" from this list?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await removePlaceFromList(place.id);
+            refetch();
+          } catch {
+            Alert.alert("Couldn't remove", "Something went wrong. Please try again.");
+          }
+        },
+      },
+    ]);
   };
 
   const toggleVisibility = async () => {
@@ -195,10 +214,30 @@ export default function ListDetailScreen() {
                       {place.address ? <Text style={styles.placeAddress}>{place.address}</Text> : null}
                       {place.note ? <Text style={styles.placeNote}>{place.note}</Text> : null}
                     </View>
+                    {isOwner ? (
+                      <Pressable
+                        onPress={() => confirmRemovePlace(place)}
+                        hitSlop={8}
+                        style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${place.name}`}
+                      >
+                        <Ionicons name="close" size={18} color={Star.textMuted} />
+                      </Pressable>
+                    ) : null}
                   </View>
                 </Card>
               ))
             )}
+
+            {isOwner ? (
+              <AddPlaceToList
+                listId={data.id}
+                existingGoogleIds={data.places.map((p) => p.googlePlaceId).filter((x): x is string => !!x)}
+                nextPosition={data.places.reduce((m, p) => Math.max(m, p.position), -1) + 1}
+                onAdded={refetch}
+              />
+            ) : null}
           </View>
         </ScrollView>
       )}
@@ -264,6 +303,16 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 20 },
   emptyText: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
   placeRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  removeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Star.base,
+    borderWidth: 2,
+    borderColor: Star.ink,
+  },
   numberBadge: {
     width: 30,
     height: 30,
