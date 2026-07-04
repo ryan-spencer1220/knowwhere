@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { type ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,10 +17,16 @@ export type ProfileHeaderProps = {
   stats: { key: string; label: string; value: number }[];
   uploading?: boolean;
   uploadError?: string | null;
+  // When provided the avatar is editable (camera badge + tap to upload).
   onPickAvatar?: () => void;
   onSettings?: () => void;
   onStatPress?: (key: string) => void;
-  // Override the safe-area top padding (used by the design preview on web).
+  // Right-hand control on the identity row. Overrides the settings gear — the
+  // public profile passes a Follow button here.
+  action?: ReactNode;
+  // Shown when displayName is null ("You" on your own profile).
+  nameFallback?: string;
+  // Override the safe-area top padding (0 when a nav bar already consumed it).
   topInset?: number;
 };
 
@@ -42,6 +49,8 @@ export function ProfileHeader({
   onPickAvatar,
   onSettings,
   onStatPress,
+  action,
+  nameFallback = "You",
   topInset,
 }: ProfileHeaderProps) {
   const Star = useTheme();
@@ -53,18 +62,22 @@ export function ProfileHeader({
     <View style={[styles.wrap, { paddingTop }]}>
       <Texture />
       <View style={styles.topRow}>
-        <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
+        {onPickAvatar ? (
+          <Pressable onPress={onPickAvatar} disabled={uploading} style={styles.avatarWrap}>
+            <Avatar url={avatarUrl} initials={initials} size={72} />
+            <View style={styles.cameraBadge}>
+              {uploading ? (
+                <ActivityIndicator size="small" color={Star.surface} />
+              ) : (
+                <Ionicons name="camera" size={14} color={Star.surface} />
+              )}
+            </View>
+          </Pressable>
+        ) : (
           <Avatar url={avatarUrl} initials={initials} size={72} />
-          <View style={styles.cameraBadge}>
-            {uploading ? (
-              <ActivityIndicator size="small" color={Star.surface} />
-            ) : (
-              <Ionicons name="camera" size={14} color={Star.surface} />
-            )}
-          </View>
-        </Pressable>
+        )}
         <View style={styles.info}>
-          <Text style={styles.name}>{displayName ?? "You"}</Text>
+          <Text style={styles.name}>{displayName ?? nameFallback}</Text>
           {username || city ? (
             <View style={styles.handleRow}>
               {username ? <Text style={styles.handle}>@{username}</Text> : null}
@@ -72,21 +85,27 @@ export function ProfileHeader({
               {city ? (
                 <>
                   <Ionicons name="location" size={13} color={Star.textMuted} />
-                  <Text style={styles.locText}>{city}</Text>
+                  <Text style={styles.locText} numberOfLines={1}>
+                    {city}
+                  </Text>
                 </>
               ) : null}
             </View>
           ) : null}
         </View>
-        <Pressable
-          onPress={onSettings}
-          style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-        >
-          <Ionicons name="settings-outline" size={20} color={Star.ink} />
-        </Pressable>
+        {action ? (
+          action
+        ) : onSettings ? (
+          <Pressable
+            onPress={onSettings}
+            style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Ionicons name="settings-outline" size={20} color={Star.ink} />
+          </Pressable>
+        ) : null}
       </View>
 
       {bio ? <Text style={styles.bio}>{bio}</Text> : null}
@@ -150,7 +169,7 @@ const makeStyles = (Star: Palette) =>
     info: { flex: 1, gap: 3 },
     handleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     dot: { fontSize: 14, fontWeight: "800", color: Star.textMuted },
-    locText: { fontSize: 13, fontWeight: "700", color: Star.textMuted },
+    locText: { flexShrink: 1, fontSize: 13, fontWeight: "700", color: Star.textMuted },
     settingsBtn: {
       width: 40,
       height: 40,
