@@ -14,9 +14,10 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
 
+import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
 /**
@@ -82,6 +83,7 @@ export function ListScreen<T>({
   empty?: ReactNode;
 }) {
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.screenRoot}>
       <Texture />
@@ -93,7 +95,7 @@ export function ListScreen<T>({
           ListHeaderComponent={header as ReactElement}
           ListFooterComponent={footer as ReactElement}
           ListEmptyComponent={empty as ReactElement}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         />

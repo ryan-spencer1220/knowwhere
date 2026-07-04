@@ -11,6 +11,7 @@ import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { pickAndUploadAvatar } from "@/lib/avatar";
+import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
 import { getProfileScreen, timeAgo, type ProfileScreenData } from "@/lib/lists";
 import { useFocusQuery } from "@/lib/use-focus-query";
 
@@ -104,7 +105,7 @@ export default function ProfileScreen() {
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 36 }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]}
         showsVerticalScrollIndicator={false}
         renderItem={({ item: list }) => (
           <View style={styles.rowPad}>

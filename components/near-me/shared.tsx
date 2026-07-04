@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Card } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
+import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { getNearbyPlaces, milesLabel, type NearbyPlace } from "@/lib/nearby";
 
@@ -66,8 +68,13 @@ export function NearbyList({
 }) {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]}
+      showsVerticalScrollIndicator={false}
+    >
       {loading ? (
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : places.length === 0 ? (

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Field } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
+import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 
@@ -259,7 +260,7 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
       </View>
 
       {/* Bottom: selected-spot card and/or list builder */}
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + 16 }]} pointerEvents="box-none">
+      <View style={[styles.bottom, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]} pointerEvents="box-none">
         {hasSelected ? (
           <View style={styles.sheet}>
             <View style={styles.flex}>
