@@ -30,8 +30,8 @@ const mockFixture: ListDetail = {
   savesCount: 3,
   likedByMe: false,
   places: [
-    { id: "p1", name: "Dolores Park", address: "Dolores St", latitude: 1, longitude: 2, note: null, position: 0 },
-    { id: "p2", name: "Tartine", address: "600 Guerrero St", latitude: 3, longitude: 4, note: "Get the croissant", position: 1 },
+    { id: "p1", googlePlaceId: "g1", name: "Dolores Park", address: "Dolores St", latitude: 1, longitude: 2, note: null, position: 0 },
+    { id: "p2", googlePlaceId: "g2", name: "Tartine", address: "600 Guerrero St", latitude: 3, longitude: 4, note: "Get the croissant", position: 1 },
   ],
 };
 

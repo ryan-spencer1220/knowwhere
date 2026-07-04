@@ -129,6 +129,7 @@ export async function getProfileScreen(userId: string): Promise<ProfileScreenDat
 
 export type PlaceItem = {
   id: string;
+  googlePlaceId: string | null;
   name: string;
   address: string | null;
   latitude: number | null;
@@ -171,7 +172,7 @@ export async function getListDetail(id: string, currentUserId: string | null = n
   const { data, error } = await supabase
     .from("lists")
     .select(
-      "id, title, description, city, location, created_at, is_public, saves_count, owner:profiles!owner_id(id, username, display_name), list_places(id, name, address, latitude, longitude, note, position)",
+      "id, title, description, city, location, created_at, is_public, saves_count, owner:profiles!owner_id(id, username, display_name), list_places(id, googlePlaceId:google_place_id, name, address, latitude, longitude, note, position)",
     )
     .eq("id", id)
     .single();
@@ -230,6 +231,30 @@ export async function setListVisibility(listId: string, isPublic: boolean): Prom
 // this to the list's owner.
 export async function deleteList(listId: string): Promise<void> {
   const { error } = await supabase.from("lists").delete().eq("id", listId);
+  if (error) throw error;
+}
+
+// Append a place to a list. RLS restricts this to the list's owner.
+export async function addPlaceToList(
+  listId: string,
+  spot: { id: string; name: string; address: string; latitude: number; longitude: number },
+  position: number,
+): Promise<void> {
+  const { error } = await supabase.from("list_places").insert({
+    list_id: listId,
+    google_place_id: spot.id,
+    name: spot.name,
+    address: spot.address,
+    latitude: spot.latitude,
+    longitude: spot.longitude,
+    position,
+  });
+  if (error) throw error;
+}
+
+// Remove a single place row from a list (owner only, via RLS).
+export async function removePlaceFromList(placeRowId: string): Promise<void> {
+  const { error } = await supabase.from("list_places").delete().eq("id", placeRowId);
   if (error) throw error;
 }
 
