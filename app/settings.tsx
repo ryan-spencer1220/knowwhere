@@ -217,18 +217,17 @@ export default function SettingsScreen() {
                   <Pressable
                     key={t.key}
                     onPress={() => setTheme(t.key)}
-                    style={styles.themeItem}
+                    style={[styles.swatch, { backgroundColor: t.palette.base }, active && styles.swatchActive]}
+                    accessibilityRole="button"
                     accessibilityLabel={`${t.name} theme`}
+                    accessibilityState={{ selected: active }}
                   >
-                    <View style={[styles.swatch, { backgroundColor: t.palette.base }]}>
-                      <View style={[styles.swatchDot, { backgroundColor: t.palette.pop }]} />
-                      {active ? (
-                        <View style={styles.swatchCheck}>
-                          <Ionicons name="checkmark" size={13} color={Star.surface} />
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={[styles.themeName, active && styles.themeNameActive]}>{t.name}</Text>
+                    <View style={[styles.swatchDot, { backgroundColor: t.palette.pop }]} />
+                    {active ? (
+                      <View style={styles.swatchCheck}>
+                        <Ionicons name="checkmark" size={12} color={Star.surface} />
+                      </View>
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -375,33 +374,31 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   saveBtnDisabled: { opacity: 0.4 },
   pressedBtn: { transform: [{ translateY: 2 }], opacity: 0.95 },
   saveBtnText: { color: Star.pop, fontSize: 16, fontWeight: "900", letterSpacing: 0.3 },
-  themeRow: { flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  themeItem: { alignItems: "center", gap: 6, width: 56 },
+  themeRow: { flexDirection: "row", justifyContent: "space-between" },
   swatch: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     borderWidth: 2.5,
     borderColor: Star.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  swatchDot: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: Star.ink },
+  swatchActive: { borderWidth: 3.5 },
+  swatchDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: Star.ink },
   swatchCheck: {
     position: "absolute",
     top: -7,
     right: -7,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: Star.ink,
     borderWidth: 2,
     borderColor: Star.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  themeName: { fontSize: 12, fontWeight: "700", color: Star.textMuted },
-  themeNameActive: { color: Star.ink, fontWeight: "800" },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 2 },
   linkText: { flex: 1, fontSize: 15, fontWeight: "700", color: Star.ink },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
