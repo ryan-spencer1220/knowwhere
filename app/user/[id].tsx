@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Avatar, initialsFrom } from "@/components/avatar";
+import { initialsFrom } from "@/components/avatar";
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
+import { ProfileHeader } from "@/components/profile-header";
 import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { timeAgo } from "@/lib/lists";
@@ -83,14 +84,12 @@ export default function UserProfileScreen() {
   return (
     <View style={styles.root}>
       <Texture />
-      <SafeAreaView edges={["top"]}>
+      <SafeAreaView edges={["top"]} style={styles.topBar}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8} accessibilityLabel="Back">
             <Ionicons name="chevron-back" size={24} color={Star.ink} />
           </Pressable>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {data?.profile.username ? `@${data.profile.username}` : "Profile"}
-          </Text>
+          <View style={styles.headerSpacer} />
           {data && !data.isSelf ? (
             <Pressable onPress={openMenu} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8} accessibilityLabel="More options">
               <Ionicons name="ellipsis-horizontal" size={22} color={Star.ink} />
@@ -109,69 +108,54 @@ export default function UserProfileScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Card style={styles.headerCard}>
-            <View style={styles.topRow}>
-              <Avatar url={data.profile.avatar_url} initials={initialsFrom(data.profile.display_name, data.profile.username)} size={72} />
-              <View style={styles.headerInfo}>
-                <Text style={styles.name}>{data.profile.display_name ?? "KnowWhere user"}</Text>
-                {data.profile.username ? <Text style={styles.handle}>@{data.profile.username}</Text> : null}
-              </View>
-              {!data.isSelf ? <FollowButton targetId={data.profile.id} following={data.isFollowing} /> : null}
-            </View>
+          <ProfileHeader
+            avatarUrl={data.profile.avatar_url}
+            initials={initialsFrom(data.profile.display_name, data.profile.username)}
+            displayName={data.profile.display_name}
+            username={data.profile.username}
+            bio={data.profile.bio}
+            city={data.profile.city}
+            nameFallback="KnowWhere user"
+            topInset={0}
+            stats={[
+              { key: "lists", label: "Lists", value: data.lists.length },
+              { key: "followers", label: "Followers", value: data.followers },
+              { key: "following", label: "Following", value: data.following },
+            ]}
+            action={!data.isSelf ? <FollowButton targetId={data.profile.id} following={data.isFollowing} /> : undefined}
+            onStatPress={(key) =>
+              router.push({
+                pathname: "/connections/[id]",
+                params: { id: data.profile.id, tab: key, name: data.profile.display_name ?? "Profile" },
+              })
+            }
+          />
 
-            {data.profile.bio ? <Text style={styles.bio}>{data.profile.bio}</Text> : null}
-            {data.profile.city ? <Pill icon="location" label={data.profile.city} /> : null}
-
-            <View style={styles.divider} />
-
-            <View style={styles.statsRow}>
-              {[
-                { key: "lists", label: "Lists", value: data.lists.length },
-                { key: "followers", label: "Followers", value: data.followers },
-                { key: "following", label: "Following", value: data.following },
-              ].map((stat, i) => (
-                <Pressable
-                  key={stat.key}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/connections/[id]",
-                      params: { id: data.profile.id, tab: stat.key, name: data.profile.display_name ?? "Profile" },
-                    })
-                  }
-                  style={({ pressed }) => [styles.statCol, i > 0 && styles.statColDivider, pressed && styles.pressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${stat.value} ${stat.label}`}
-                >
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </Card>
-
-          <Text style={styles.sectionTitle}>Lists</Text>
-          {data.lists.length === 0 ? (
-            <Card style={styles.empty}>
-              <Text style={styles.emptyText}>No public lists yet.</Text>
-            </Card>
-          ) : (
-            data.lists.map((list) => (
-              <Card
-                key={list.id}
-                cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
-                onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
-              >
-                <Text style={styles.listTitle}>{list.title}</Text>
-                {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
-                <View style={styles.metaRow}>
-                  <Text style={styles.meta}>
-                    <Text style={styles.metaStrong}>{list.placesCount}</Text> places
-                  </Text>
-                  <Text style={styles.meta}>{timeAgo(list.createdAt)}</Text>
-                </View>
+          <View style={styles.listsSection}>
+            <Text style={styles.sectionTitle}>Lists</Text>
+            {data.lists.length === 0 ? (
+              <Card style={styles.empty}>
+                <Text style={styles.emptyText}>No public lists yet.</Text>
               </Card>
-            ))
-          )}
+            ) : (
+              data.lists.map((list) => (
+                <Card
+                  key={list.id}
+                  cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
+                  onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
+                >
+                  <Text style={styles.listTitle}>{list.title}</Text>
+                  {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
+                  <View style={styles.metaRow}>
+                    <Text style={styles.meta}>
+                      <Text style={styles.metaStrong}>{list.placesCount}</Text> places
+                    </Text>
+                    <Text style={styles.meta}>{timeAgo(list.createdAt)}</Text>
+                  </View>
+                </Card>
+              ))
+            )}
+          </View>
         </ScrollView>
       )}
     </View>
@@ -189,22 +173,12 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.6 },
-  headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
+  topBar: { backgroundColor: Star.surface },
+  headerSpacer: { flex: 1 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
-  scroll: { padding: 20, paddingBottom: 36, gap: 16 },
-  headerCard: { padding: 18, gap: 12 },
-  topRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerInfo: { flex: 1, gap: 2 },
-  name: { fontSize: 22, fontWeight: "900", color: Star.ink, letterSpacing: -0.5 },
-  handle: { fontSize: 14, fontWeight: "700", color: Star.pop },
-  bio: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
-  divider: { height: 1.5, backgroundColor: "rgba(20,18,16,0.1)", marginTop: 2 },
-  statsRow: { flexDirection: "row" },
-  statCol: { flex: 1, alignItems: "center", gap: 1 },
-  statColDivider: { borderLeftWidth: 1.5, borderLeftColor: "rgba(20,18,16,0.1)" },
-  statValue: { fontSize: 22, fontWeight: "900", color: Star.ink },
-  statLabel: { fontSize: 12, fontWeight: "700", color: Star.textMuted },
+  scroll: { paddingBottom: 36 },
+  listsSection: { paddingHorizontal: 20, paddingTop: 18, gap: 16 },
   sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4 },
   empty: { alignItems: "center", paddingVertical: 20 },
   emptyText: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
