@@ -116,6 +116,7 @@ export default function UserProfileScreen() {
             bio={data.profile.bio}
             city={data.profile.city}
             nameFallback="KnowWhere user"
+            stackMeta
             topInset={0}
             stats={[
               { key: "lists", label: "Lists", value: data.lists.length },
