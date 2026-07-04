@@ -26,6 +26,9 @@ export type ProfileHeaderProps = {
   action?: ReactNode;
   // Shown when displayName is null ("You" on your own profile).
   nameFallback?: string;
+  // Put the @handle and location on separate lines instead of one inline row
+  // (the public profile stacks them so the Follow button doesn't crowd them).
+  stackMeta?: boolean;
   // Override the safe-area top padding (0 when a nav bar already consumed it).
   topInset?: number;
 };
@@ -51,6 +54,7 @@ export function ProfileHeader({
   onStatPress,
   action,
   nameFallback = "You",
+  stackMeta,
   topInset,
 }: ProfileHeaderProps) {
   const Star = useTheme();
@@ -78,7 +82,19 @@ export function ProfileHeader({
         )}
         <View style={styles.info}>
           <Text style={styles.name}>{displayName ?? nameFallback}</Text>
-          {username || city ? (
+          {stackMeta ? (
+            <>
+              {username ? <Text style={styles.handle}>@{username}</Text> : null}
+              {city ? (
+                <View style={styles.locRow}>
+                  <Ionicons name="location" size={13} color={Star.textMuted} />
+                  <Text style={styles.locText} numberOfLines={1}>
+                    {city}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : username || city ? (
             <View style={styles.handleRow}>
               {username ? <Text style={styles.handle}>@{username}</Text> : null}
               {username && city ? <Text style={styles.dot}>·</Text> : null}
@@ -168,6 +184,7 @@ const makeStyles = (Star: Palette) =>
     },
     info: { flex: 1, gap: 3 },
     handleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     dot: { fontSize: 14, fontWeight: "800", color: Star.textMuted },
     locText: { flexShrink: 1, fontSize: 13, fontWeight: "700", color: Star.textMuted },
     settingsBtn: {
