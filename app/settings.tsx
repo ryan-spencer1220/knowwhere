@@ -234,7 +234,7 @@ export default function SettingsScreen() {
             </View>
           </Card>
 
-          {/* Account */}
+          {/* Account (with app version) */}
           <Text style={styles.sectionTitle}>Account</Text>
           <Card style={styles.card}>
             <View style={styles.infoRow}>
@@ -252,22 +252,18 @@ export default function SettingsScreen() {
                 <Text style={styles.infoValue}>{new Date(profile.created_at).toLocaleDateString()}</Text>
               </View>
             </View>
-          </Card>
-
-          {/* About */}
-          <Text style={styles.sectionTitle}>About</Text>
-          <Card style={styles.card}>
+            <View style={styles.rowDivider} />
             <View style={styles.infoRow}>
               <Ionicons name="sparkles-outline" size={18} color={Star.ink} />
               <View style={styles.flex}>
-                <Text style={styles.infoLabel}>KnowWhere</Text>
-                <Text style={styles.infoValue}>Version {version}</Text>
+                <Text style={styles.infoLabel}>Version</Text>
+                <Text style={styles.infoValue}>KnowWhere {version}</Text>
               </View>
             </View>
           </Card>
 
-          {/* Legal */}
-          <Text style={styles.sectionTitle}>Legal</Text>
+          {/* Legal + account actions in one list */}
+          <Text style={styles.sectionTitle}>More</Text>
           <Card style={styles.card}>
             <Pressable onPress={() => router.push("/legal/privacy")} style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}>
               <Ionicons name="shield-checkmark-outline" size={18} color={Star.ink} />
@@ -280,32 +276,28 @@ export default function SettingsScreen() {
               <Text style={styles.linkText}>Terms of Service</Text>
               <Ionicons name="chevron-forward" size={18} color={Star.textMuted} />
             </Pressable>
+            <View style={styles.rowDivider} />
+            <Pressable onPress={onSignOut} style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}>
+              <Ionicons name="log-out-outline" size={18} color={Star.ink} />
+              <Text style={styles.linkText}>Sign out</Text>
+            </Pressable>
+            <View style={styles.rowDivider} />
+            <Pressable
+              onPress={onDeleteAccount}
+              disabled={deleting}
+              style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
+              accessibilityLabel="Delete account"
+            >
+              {deleting ? (
+                <ActivityIndicator color={Star.danger} />
+              ) : (
+                <>
+                  <Ionicons name="trash-outline" size={18} color={Star.danger} />
+                  <Text style={[styles.linkText, styles.deleteText]}>Delete account</Text>
+                </>
+              )}
+            </Pressable>
           </Card>
-
-          {/* Sign out */}
-          <Pressable onPress={onSignOut} style={({ pressed }) => [styles.signOut, pressed && styles.signOutPressed]}>
-            <Ionicons name="log-out-outline" size={18} color={Star.danger} />
-            <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
-
-          {/* Danger zone */}
-          <Text style={[styles.sectionTitle, styles.dangerTitle]}>Danger zone</Text>
-          <Pressable
-            onPress={onDeleteAccount}
-            disabled={deleting}
-            style={({ pressed }) => [styles.deleteBtn, pressed && styles.signOutPressed]}
-            accessibilityLabel="Delete account"
-          >
-            {deleting ? (
-              <ActivityIndicator color={Star.surface} />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={18} color={Star.surface} />
-                <Text style={styles.deleteBtnText}>Delete account</Text>
-              </>
-            )}
-          </Pressable>
-          <Text style={styles.deleteHint}>This permanently removes your account and all your data.</Text>
         </ScrollView>
       )}
     </View>
@@ -405,32 +397,5 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   infoLabel: { fontSize: 12, fontWeight: "700", color: Star.textMuted },
   infoValue: { fontSize: 15, fontWeight: "700", color: Star.ink, marginTop: 1 },
   rowDivider: { height: 1.5, backgroundColor: "rgba(20,18,16,0.1)" },
-  signOut: {
-    marginTop: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 16,
-    paddingVertical: 15,
-    backgroundColor: Star.surface,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
-  signOutPressed: { transform: [{ translateY: 2 }], opacity: 0.95 },
-  signOutText: { fontSize: 15, fontWeight: "800", color: Star.danger },
-  dangerTitle: { color: Star.danger },
-  deleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 16,
-    paddingVertical: 15,
-    backgroundColor: Star.danger,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
-  deleteBtnText: { fontSize: 15, fontWeight: "800", color: Star.surface },
-  deleteHint: { fontSize: 12, fontWeight: "500", color: Star.textMuted, textAlign: "center" },
+  deleteText: { color: Star.danger, fontWeight: "800" },
 });
