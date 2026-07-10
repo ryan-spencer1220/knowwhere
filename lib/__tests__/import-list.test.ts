@@ -1,19 +1,24 @@
 import {
   extractLocationHint,
+  fetchSharedList,
   listNameFromFile,
   parseTakeoutCsv,
   resolveRows,
   type ImportRow,
 } from "@/lib/import-list";
 import { fetchDetails, resolvePlaceId, type Spot } from "@/lib/places-search";
+import { supabase } from "@/lib/supabase";
 
 jest.mock("@/lib/places-search", () => ({
   resolvePlaceId: jest.fn(),
   fetchDetails: jest.fn(),
 }));
 
+jest.mock("@/lib/supabase", () => ({ supabase: { functions: { invoke: jest.fn() } } }));
+
 const mockResolve = resolvePlaceId as jest.MockedFunction<typeof resolvePlaceId>;
 const mockDetails = fetchDetails as jest.MockedFunction<typeof fetchDetails>;
+const mockInvoke = (supabase as unknown as { functions: { invoke: jest.Mock } }).functions.invoke;
 
 const spot = (id: string): Spot => ({ id, name: `Place ${id}`, address: "somewhere", latitude: 1, longitude: 2 });
 
@@ -113,5 +118,57 @@ describe("resolveRows", () => {
     const progress: number[] = [];
     await resolveRows(rows, (done, total) => progress.push(done) || expect(total).toBe(3));
     expect(progress.sort()).toEqual([1, 2, 3]);
+  });
+});
+
+describe("fetchSharedList", () => {
+  it("uses the scraper's placeId + coordinates directly, without a Places lookup", async () => {
+    mockInvoke.mockResolvedValue({
+      data: {
+        listName: "Taipei Food",
+        places: [{ name: "Nonsense Cafe", address: "Wuchang St", latitude: 25.04, longitude: 121.5, placeId: "ChIJ_abc" }],
+      },
+      error: null,
+    });
+
+    const { rows, listName } = await fetchSharedList("https://maps.app.goo.gl/x");
+
+    expect(listName).toBe("Taipei Food");
+    expect(rows[0]).toMatchObject({
+      status: "matched",
+      spot: { id: "ChIJ_abc", name: "Nonsense Cafe", latitude: 25.04, longitude: 121.5 },
+    });
+    expect(mockResolve).not.toHaveBeenCalled();
+    expect(mockDetails).not.toHaveBeenCalled();
+  });
+
+  it("falls back to resolving by name + coords when a place has no placeId", async () => {
+    mockInvoke.mockResolvedValue({
+      data: { places: [{ name: "Taiwan Buffet", address: "", latitude: 25.0, longitude: 121.5, placeId: null }] },
+      error: null,
+    });
+    mockResolve.mockResolvedValue("pid-resolved");
+    mockDetails.mockResolvedValue(spot("pid-resolved"));
+
+    const { rows } = await fetchSharedList("https://maps.app.goo.gl/x");
+
+    expect(mockResolve).toHaveBeenCalledWith("Taiwan Buffet", { latitude: 25.0, longitude: 121.5 });
+    expect(rows[0]).toMatchObject({ status: "matched", spot: { id: "pid-resolved" } });
+  });
+
+  it("marks a place unmatched when it has no placeId and can't be resolved", async () => {
+    mockInvoke.mockResolvedValue({
+      data: { places: [{ name: "Mystery Spot", address: "", latitude: null, longitude: null, placeId: null }] },
+      error: null,
+    });
+    mockResolve.mockResolvedValue(null);
+
+    const { rows } = await fetchSharedList("https://maps.app.goo.gl/x");
+    expect(rows[0]).toMatchObject({ status: "unmatched", row: { title: "Mystery Spot" } });
+  });
+
+  it("throws when the edge function returns an error", async () => {
+    mockInvoke.mockResolvedValue({ data: null, error: new Error("Missing APIFY_TOKEN secret.") });
+    await expect(fetchSharedList("https://maps.app.goo.gl/x")).rejects.toThrow("Missing APIFY_TOKEN");
   });
 });
