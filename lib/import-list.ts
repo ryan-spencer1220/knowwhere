@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 
 import { fetchDetails, resolvePlaceId, type Coords, type Spot } from "@/lib/places-search";
+import { supabase } from "@/lib/supabase";
 
 // A single row parsed out of a Google Takeout "Saved" list CSV.
 export type ImportRow = { title: string; note: string; url: string };
@@ -63,30 +64,87 @@ async function resolveRow(row: ImportRow): Promise<ResolvedRow> {
   }
 }
 
-// Resolve every row with a bounded number of concurrent requests, reporting
-// progress as each one settles. Preserves input order in the returned array.
-export async function resolveRows(
-  rows: ImportRow[],
+// Run an async mapper over items with a bounded number of concurrent calls,
+// reporting progress as each settles and preserving input order.
+async function mapPool<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number,
   onProgress?: (done: number, total: number) => void,
-  concurrency = 4,
-): Promise<ResolvedRow[]> {
-  const results = new Array<ResolvedRow>(rows.length);
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
   let next = 0;
   let done = 0;
 
   async function worker() {
     while (true) {
       const i = next++;
-      if (i >= rows.length) return;
-      results[i] = await resolveRow(rows[i]);
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
       done += 1;
-      onProgress?.(done, rows.length);
+      onProgress?.(done, items.length);
     }
   }
 
-  const workers = Array.from({ length: Math.min(concurrency, rows.length) }, worker);
-  await Promise.all(workers);
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
   return results;
+}
+
+// Resolve every CSV row with a bounded number of concurrent requests, reporting
+// progress as each one settles. Preserves input order in the returned array.
+export function resolveRows(
+  rows: ImportRow[],
+  onProgress?: (done: number, total: number) => void,
+  concurrency = 4,
+): Promise<ResolvedRow[]> {
+  return mapPool(rows, resolveRow, concurrency, onProgress);
+}
+
+// One place as returned by the shared-list scraper (via the import-list edge
+// function). placeId and coordinates are usually present, but not guaranteed.
+export type SharedListPlace = {
+  name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
+};
+
+// Turn a scraped place into a review row. When the scraper already gave us a
+// Google place_id + coordinates we use them directly (no extra lookup);
+// otherwise we fall back to resolving by name near its coordinates.
+async function resolveSharedPlace(p: SharedListPlace): Promise<ResolvedRow> {
+  const row: ImportRow = { title: p.name, note: "", url: "" };
+  const coords: Coords | null =
+    typeof p.latitude === "number" && typeof p.longitude === "number"
+      ? { latitude: p.latitude, longitude: p.longitude }
+      : null;
+  if (p.placeId && coords) {
+    return { status: "matched", row, spot: { id: p.placeId, name: p.name, address: p.address, latitude: coords.latitude, longitude: coords.longitude } };
+  }
+  try {
+    const placeId = p.placeId ?? (await resolvePlaceId(p.name, coords));
+    if (!placeId) return { status: "unmatched", row };
+    const spot = await fetchDetails(placeId);
+    if (!spot) return { status: "unmatched", row };
+    return { status: "matched", row, spot };
+  } catch {
+    return { status: "unmatched", row };
+  }
+}
+
+// Read a public shared Google Maps list from its link (via the import-list edge
+// function) and turn it into review rows. Returns the resolved rows plus the
+// list's name (when the scraper reports it) to pre-fill the title.
+export async function fetchSharedList(
+  url: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ rows: ResolvedRow[]; listName: string | null }> {
+  const { data, error } = await supabase.functions.invoke("import-list", { body: { url } });
+  if (error) throw error;
+  const places = (data?.places ?? []) as SharedListPlace[];
+  const rows = await mapPool(places, resolveSharedPlace, 4, onProgress);
+  return { rows, listName: (data?.listName ?? null) as string | null };
 }
 
 // Turn a picked file's name into a sensible default list title.

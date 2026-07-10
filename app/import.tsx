@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Field, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import {
+  fetchSharedList,
   listNameFromFile,
   parseTakeoutCsv,
   resolveRows,
@@ -24,7 +25,8 @@ type Entry = { title: string; spot: Spot | null; included: boolean };
 
 type Phase =
   | { step: "idle" }
-  | { step: "resolving"; done: number; total: number }
+  // `label` drives the indeterminate link import; `done`/`total` drive the CSV match progress.
+  | { step: "resolving"; done?: number; total?: number; label?: string }
   | { step: "review" };
 
 export default function ImportScreen() {
@@ -34,6 +36,7 @@ export default function ImportScreen() {
   const styles = useThemedStyles(makeStyles);
 
   const [phase, setPhase] = useState<Phase>({ step: "idle" });
+  const [link, setLink] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [listName, setListName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
@@ -42,6 +45,32 @@ export default function ImportScreen() {
 
   const includedCount = useMemo(() => entries.filter((e) => e.included && e.spot).length, [entries]);
   const unmatchedCount = useMemo(() => entries.filter((e) => !e.spot).length, [entries]);
+
+  const importLink = async () => {
+    setError(null);
+    const url = link.trim();
+    if (!url) {
+      setError("Paste your Google Maps list link first.");
+      return;
+    }
+    setPhase({ step: "resolving", label: "Reading your list…" });
+    try {
+      const { rows, listName: name } = await fetchSharedList(url);
+      if (rows.length === 0) {
+        setError(
+          "Couldn't read that list. Make sure it's shared with a public link (open the list in Google Maps → Share), or import a CSV instead.",
+        );
+        setPhase({ step: "idle" });
+        return;
+      }
+      if (name) setListName(name);
+      setEntries(rows.map(toEntry));
+      setPhase({ step: "review" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't read that list.");
+      setPhase({ step: "idle" });
+    }
+  };
 
   const pickFile = async () => {
     setError(null);
@@ -127,13 +156,34 @@ export default function ImportScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {phase.step === "idle" ? (
           <View style={styles.intro}>
-            <Ionicons name="cloud-upload-outline" size={40} color={Star.ink} />
+            <Ionicons name="link-outline" size={40} color={Star.ink} />
             <Text style={styles.introTitle}>Bring over a Google Maps list</Text>
             <Text style={styles.introBody}>
-              In Google Takeout, export your <Text style={styles.bold}>Saved</Text> lists, then choose the CSV for the list you want to
-              import. We&apos;ll match each place so you can review before saving.
+              In Google Maps, open your list, tap <Text style={styles.bold}>Share</Text>, and copy the link. Paste it below and we&apos;ll
+              pull in every place so you can review before saving.
             </Text>
-            <Button label="Choose a file" onPress={pickFile} style={styles.chooseBtn} />
+            <View style={styles.form}>
+              <Field
+                label="LIST LINK"
+                placeholder="Paste your Google Maps list link"
+                value={link}
+                onChangeText={setLink}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Button label="Import list" onPress={importLink} />
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <View style={styles.orRow}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>or</Text>
+                <View style={styles.orLine} />
+              </View>
+              <Pressable onPress={pickFile} style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}>
+                <Ionicons name="document-text-outline" size={16} color={Star.ink} />
+                <Text style={styles.secondaryText}>Import a Takeout CSV instead</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -141,9 +191,13 @@ export default function ImportScreen() {
           <View style={styles.intro}>
             <ActivityIndicator size="large" color={Star.pop} />
             <Text style={styles.introTitle}>
-              Matching {phase.done} of {phase.total}…
+              {phase.total ? `Matching ${phase.done} of ${phase.total}…` : phase.label ?? "Working…"}
             </Text>
-            <Text style={styles.introBody}>Looking up each place on Google so we can pin it on the map.</Text>
+            <Text style={styles.introBody}>
+              {phase.total
+                ? "Looking up each place on Google so we can pin it on the map."
+                : "Reading the places in your shared list. This can take a moment."}
+            </Text>
           </View>
         ) : null}
 
@@ -179,8 +233,6 @@ export default function ImportScreen() {
             <Button label={`Create list (${includedCount})`} onPress={create} loading={saving} />
           </>
         ) : null}
-
-        {phase.step === "idle" && error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
     </View>
   );
@@ -284,11 +336,26 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   pressed: { opacity: 0.6 },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   scroll: { padding: 20, paddingBottom: 40, gap: 12 },
-  intro: { alignItems: "center", gap: 12, paddingVertical: 40, paddingHorizontal: 8 },
+  intro: { alignItems: "center", gap: 12, paddingVertical: 28, paddingHorizontal: 8 },
   introTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, textAlign: "center", letterSpacing: -0.4 },
   introBody: { fontSize: 14, fontWeight: "500", color: Star.textMuted, textAlign: "center", lineHeight: 20 },
   bold: { fontWeight: "800", color: Star.ink },
-  chooseBtn: { alignSelf: "stretch", marginTop: 8 },
+  form: { alignSelf: "stretch", gap: 12, marginTop: 8 },
+  orRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 2 },
+  orLine: { flex: 1, height: 1.5, backgroundColor: Star.border },
+  orText: { fontSize: 13, fontWeight: "800", color: Star.textMuted },
+  secondaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    backgroundColor: Star.surface,
+  },
+  secondaryText: { fontSize: 14, fontWeight: "800", color: Star.ink },
   summary: { fontSize: 13, fontWeight: "800", color: Star.ink, letterSpacing: 0.2 },
   row: {
     backgroundColor: Star.surface,
