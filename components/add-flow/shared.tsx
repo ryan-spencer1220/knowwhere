@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Field } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
-import { fetchCoverPhoto, fetchDetails, fetchPredictions, type Prediction, type Spot } from "@/lib/places-search";
+import { fetchDetails, fetchPredictions, type Prediction, type Spot } from "@/lib/places-search";
+import { saveList } from "@/lib/lists-write";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
-import { supabase } from "@/lib/supabase";
 
 export type { Prediction, Spot };
 
@@ -97,28 +97,7 @@ export function useAddFlow() {
     }
     setSaving(true);
     try {
-      const { data: list, error: e1 } = await supabase
-        .from("lists")
-        .insert({ owner_id: session.user.id, title: listName.trim(), is_public: isPublic })
-        .select("id")
-        .single();
-      if (e1) throw e1;
-
-      const rows = spots.map((s, i) => ({
-        list_id: list.id,
-        google_place_id: s.id,
-        name: s.name,
-        address: s.address,
-        latitude: s.latitude,
-        longitude: s.longitude,
-        position: i,
-      }));
-      const { error: e2 } = await supabase.from("list_places").insert(rows);
-      if (e2) throw e2;
-
-      // Attach a cover photo from the first spot (best-effort; never blocks save).
-      const cover = await fetchCoverPhoto(spots[0].id);
-      if (cover) await supabase.from("lists").update({ cover_image_url: cover }).eq("id", list.id);
+      await saveList({ ownerId: session.user.id, title: listName, isPublic, spots });
 
       setSpots([]);
       setListName("");
@@ -161,7 +140,16 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const hasSelected = flow.selected && !flow.alreadyAdded(flow.selected.id);
+  // Offer the import shortcut only on a clean slate, so it never covers results.
+  // Native-only: file picking + reading isn't wired for the web preview.
+  const showImport =
+    Platform.OS !== "web" &&
+    flow.query.length === 0 &&
+    flow.predictions.length === 0 &&
+    flow.spots.length === 0 &&
+    !flow.selected;
 
   return (
     <>
@@ -199,6 +187,13 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
               </Pressable>
             ))}
           </View>
+        ) : null}
+
+        {showImport ? (
+          <Pressable onPress={() => router.push("/import")} style={styles.importBtn}>
+            <Ionicons name="cloud-upload-outline" size={18} color={Star.ink} />
+            <Text style={styles.importText}>Import a list from Google Maps</Text>
+          </Pressable>
         ) : null}
       </View>
 
@@ -298,6 +293,18 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingVertical: 12,
   },
   resultDivider: { borderTopWidth: 1.5, borderTopColor: Star.border },
+  importBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Star.surface,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    paddingVertical: 12,
+  },
+  importText: { fontSize: 14, fontWeight: "800", color: Star.ink },
   resultName: { fontSize: 15, fontWeight: "800", color: Star.ink },
   resultAddress: { fontSize: 13, fontWeight: "500", color: Star.textMuted },
   bottom: {
