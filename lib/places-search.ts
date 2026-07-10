@@ -12,6 +12,8 @@ export type Spot = {
 
 export type Prediction = { placeId: string; primary: string; secondary: string };
 
+export type Coords = { latitude: number; longitude: number };
+
 // Real Places runs through the "places" Supabase Edge Function (server-side
 // key). Web stays on mock data for the offline UI preview.
 const USE_REAL_PLACES = Platform.OS !== "web";
@@ -40,6 +42,25 @@ export async function fetchPredictions(query: string): Promise<Prediction[]> {
   });
   if (error) throw error;
   return (data?.predictions ?? []) as Prediction[];
+}
+
+// Resolve a Google place_id from a free-text query (name/address), optionally
+// biased toward a location. Used to match imported places back to real Places.
+export async function resolvePlaceId(query: string, coords?: Coords | null): Promise<string | null> {
+  const q = query.trim();
+  if (!q) return null;
+  if (!USE_REAL_PLACES) {
+    const m = MOCK_SPOTS.find((s) => `${s.name} ${s.address}`.toLowerCase().includes(q.toLowerCase()));
+    return m?.id ?? null;
+  }
+  const body: Record<string, unknown> = { type: "search", query: q };
+  if (coords) {
+    body.latitude = coords.latitude;
+    body.longitude = coords.longitude;
+  }
+  const { data, error } = await supabase.functions.invoke("places", { body });
+  if (error) throw error;
+  return (data?.placeId ?? null) as string | null;
 }
 
 export async function fetchDetails(placeId: string): Promise<Spot | null> {
