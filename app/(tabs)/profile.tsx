@@ -139,7 +139,7 @@ export default function ProfileScreen() {
 
 const makeStyles = (Star: Palette) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: Star.base },
+    root: { flex: 1, backgroundColor: Star.surface },
     listContent: { flexGrow: 1 },
     rowPad: { paddingHorizontal: 20 },
     sep: { height: 16 },

@@ -164,7 +164,7 @@ export default function UserProfileScreen() {
 }
 
 const makeStyles = (Star: Palette) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: Star.base },
+  root: { flex: 1, backgroundColor: Star.surface },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -174,7 +174,8 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.6 },
-  topBar: { backgroundColor: Star.surface },
+  // Mint nav bar so it reads as one continuous colored block with the header.
+  topBar: { backgroundColor: Star.base },
   headerSpacer: { flex: 1 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
