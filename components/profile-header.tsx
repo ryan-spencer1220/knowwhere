@@ -34,10 +34,11 @@ export type ProfileHeaderProps = {
 };
 
 /**
- * Full-bleed white identity header for the Profile tab. Unlike the rest of the
- * app's chunky floating cards, this spans edge-to-edge and up under the status
- * bar so the top of the screen reads as one integrated white surface, with a
- * single chunky ink rule separating it from the mint list below.
+ * Full-bleed colored identity header. Spans edge-to-edge and up under the status
+ * bar so the top of the screen reads as one integrated brand-colored surface,
+ * with a single chunky ink rule separating it from the white list below. Text
+ * sits directly on the mint, so secondary copy uses ink (differentiated by size
+ * and weight, not color) to stay legible against the vivid background.
  */
 export function ProfileHeader({
   avatarUrl,
@@ -87,7 +88,7 @@ export function ProfileHeader({
               {username ? <Text style={styles.handle}>@{username}</Text> : null}
               {city ? (
                 <View style={styles.locRow}>
-                  <Ionicons name="location" size={13} color={Star.textMuted} />
+                  <Ionicons name="location" size={13} color={Star.ink} />
                   <Text style={styles.locText} numberOfLines={1}>
                     {city}
                   </Text>
@@ -100,7 +101,7 @@ export function ProfileHeader({
               {username && city ? <Text style={styles.dot}>·</Text> : null}
               {city ? (
                 <>
-                  <Ionicons name="location" size={13} color={Star.textMuted} />
+                  <Ionicons name="location" size={13} color={Star.ink} />
                   <Text style={styles.locText} numberOfLines={1}>
                     {city}
                   </Text>
@@ -151,14 +152,14 @@ export function ProfileHeader({
 const makeStyles = (Star: Palette) =>
   StyleSheet.create({
     wrap: {
-      backgroundColor: Star.surface,
+      backgroundColor: Star.base,
       paddingHorizontal: 20,
       paddingBottom: 18,
       gap: 12,
       overflow: "hidden",
-      // Chunky ink rule + a soft drop shadow so the white panel lifts off the
-      // mint instead of reading as a flat block. The dot Texture behind adds
-      // subtle life to the white.
+      // Chunky ink rule + a soft drop shadow so the colored panel lifts off the
+      // white list below instead of reading as a flat block. The dot Texture
+      // behind adds subtle life to the mint.
       borderBottomWidth: 2,
       borderBottomColor: Star.ink,
       shadowColor: Star.ink,
@@ -185,22 +186,25 @@ const makeStyles = (Star: Palette) =>
     info: { flex: 1, gap: 3 },
     handleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-    dot: { fontSize: 14, fontWeight: "800", color: Star.textMuted },
-    locText: { flexShrink: 1, fontSize: 13, fontWeight: "700", color: Star.textMuted },
+    dot: { fontSize: 14, fontWeight: "800", color: Star.ink },
+    locText: { flexShrink: 1, fontSize: 13, fontWeight: "700", color: Star.ink },
     settingsBtn: {
       width: 40,
       height: 40,
       borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: Star.base,
+      // White on the mint header so the control stays visible.
+      backgroundColor: Star.surface,
       borderWidth: 2,
       borderColor: Star.ink,
     },
     settingsBtnPressed: { opacity: 0.6 },
     name: { fontSize: 24, fontWeight: "900", color: Star.ink, letterSpacing: -0.5 },
-    handle: { fontSize: 14, fontWeight: "700", color: Star.pop },
-    bio: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
+    // Ink (not violet/muted) so it stays legible on the mint; the smaller size
+    // and lighter weight carry the hierarchy instead of color.
+    handle: { fontSize: 14, fontWeight: "700", color: Star.ink },
+    bio: { fontSize: 14, fontWeight: "500", color: Star.ink },
     errorText: { fontSize: 13, fontWeight: "600", color: Star.danger },
     // Lifted stats panel: white card floating on a hard offset shadow tinted
     // with the theme accent, and accent-colored numbers — both follow the
