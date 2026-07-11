@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button, Field, Texture } from "@/components/ui/kit";
+import { Button, Field, IconButton, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import {
   fetchSharedList,
@@ -145,11 +145,9 @@ export default function ImportScreen() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle}>Import a list</Text>
-          <View style={styles.backBtn} />
+          <View style={styles.headerSpacer} />
         </View>
       </SafeAreaView>
 
@@ -332,7 +330,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  headerSpacer: { width: 42, height: 42 },
   pressed: { opacity: 0.6 },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   scroll: { padding: 20, paddingBottom: 40, gap: 12 },

@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AddPlaceToList } from "@/components/add-place-to-list";
 import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
-import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { deleteList, getListDetail, removePlaceFromList, renameList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
@@ -142,33 +142,16 @@ export default function ListDetailScreen() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle} numberOfLines={1}>
             {data?.title ?? "List"}
           </Text>
           {isOwner ? (
-            <Pressable
-              onPress={confirmDelete}
-              disabled={deleting}
-              style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
-              hitSlop={8}
-              accessibilityLabel="Delete list"
-            >
-              {deleting ? <ActivityIndicator size="small" color={Star.danger} /> : <Ionicons name="trash-outline" size={22} color={Star.danger} />}
-            </Pressable>
+            <IconButton icon="trash-outline" tone="danger" onPress={confirmDelete} loading={deleting} accessibilityLabel="Delete list" />
           ) : data ? (
-            <Pressable
-              onPress={promptReport}
-              style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-              hitSlop={8}
-              accessibilityLabel="Report list"
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color={Star.ink} />
-            </Pressable>
+            <IconButton icon="ellipsis-horizontal" onPress={promptReport} accessibilityLabel="Report list" />
           ) : (
-            <View style={styles.backBtn} />
+            <View style={styles.headerSpacer} />
           )}
         </View>
       </SafeAreaView>
@@ -197,37 +180,16 @@ export default function ListDetailScreen() {
                   returnKeyType="done"
                   onSubmitEditing={saveRename}
                 />
-                <Pressable
-                  onPress={saveRename}
-                  disabled={savingTitle}
-                  style={({ pressed }) => [styles.titleIconBtn, pressed && styles.pressed]}
-                  hitSlop={6}
-                  accessibilityLabel="Save list name"
-                >
-                  {savingTitle ? <ActivityIndicator size="small" color={Star.ink} /> : <Ionicons name="checkmark" size={20} color={Star.ink} />}
-                </Pressable>
-                <Pressable
-                  onPress={() => setEditingTitle(false)}
-                  disabled={savingTitle}
-                  style={({ pressed }) => [styles.titleIconBtn, pressed && styles.pressed]}
-                  hitSlop={6}
-                  accessibilityLabel="Cancel renaming"
-                >
-                  <Ionicons name="close" size={20} color={Star.ink} />
-                </Pressable>
+                <IconButton icon="checkmark" onPress={saveRename} loading={savingTitle} size={44} accessibilityLabel="Save list name" />
+                <IconButton icon="close" onPress={() => setEditingTitle(false)} disabled={savingTitle} size={44} accessibilityLabel="Cancel renaming" />
               </View>
             ) : (
-              <Pressable
-                onPress={isOwner ? startRename : undefined}
-                disabled={!isOwner}
-                style={styles.titleRow}
-                hitSlop={4}
-                accessibilityRole={isOwner ? "button" : undefined}
-                accessibilityLabel={isOwner ? `Rename list ${data.title}` : undefined}
-              >
+              <View style={styles.titleRow}>
                 <Text style={styles.title}>{data.title}</Text>
-                {isOwner ? <Ionicons name="pencil" size={18} color={Star.textMuted} style={styles.titlePencil} /> : null}
-              </Pressable>
+                {isOwner ? (
+                  <IconButton icon="pencil" onPress={startRename} size={38} accessibilityLabel={`Rename list ${data.title}`} />
+                ) : null}
+              </View>
             )}
             <View style={styles.metaRow}>
               <Pressable
@@ -327,33 +289,16 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  headerSpacer: { width: 42, height: 42 },
   pressed: { opacity: 0.6 },
-  deleteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.surface,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
   scroll: { paddingBottom: 36 },
   body: { padding: 20, gap: 12 },
-  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   title: { flex: 1, fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
-  titlePencil: { marginTop: 8 },
-  titleEditRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  titleEditRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   titleInput: {
     flex: 1,
     fontSize: 22,
@@ -362,20 +307,10 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     letterSpacing: -0.5,
     backgroundColor: Star.surface,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: Star.ink,
     paddingHorizontal: 12,
     paddingVertical: 8,
-  },
-  titleIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.surface,
-    borderWidth: 2,
-    borderColor: Star.ink,
   },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   byline: { fontSize: 14, fontWeight: "600", color: Star.textMuted },

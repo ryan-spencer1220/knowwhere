@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -7,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, initialsFrom } from "@/components/avatar";
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
-import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { getMyLists, type ListCard } from "@/lib/lists";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
@@ -52,13 +51,11 @@ export default function ConnectionsScreen() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8} accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle} numberOfLines={1}>
             {name || "Profile"}
           </Text>
-          <View style={styles.backBtn} />
+          <View style={styles.iconSpacer} />
         </View>
 
         <View style={styles.segment}>
@@ -149,7 +146,7 @@ const makeStyles = (Star: Palette) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
-    backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    iconSpacer: { width: 42, height: 42 },
     pressed: { opacity: 0.6 },
     headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
     segment: {

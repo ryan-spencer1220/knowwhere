@@ -168,6 +168,62 @@ export function Button({
   );
 }
 
+// Standardized chunky icon button — a white square with a thick ink border and
+// a hard offset shadow (the app's Card treatment, shrunk), that presses "down"
+// into its shadow on tap. Use for every header/action control (back, settings,
+// delete, rename, etc.) so they read as one consistent, tactile set. `tone`
+// swaps the icon to the danger color for destructive actions.
+export function IconButton({
+  icon,
+  onPress,
+  accessibilityLabel,
+  tone = "default",
+  loading = false,
+  disabled = false,
+  size = 42,
+  iconSize,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress?: () => void;
+  accessibilityLabel: string;
+  tone?: "default" | "danger";
+  loading?: boolean;
+  disabled?: boolean;
+  size?: number;
+  iconSize?: number;
+}) {
+  const Star = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const color = tone === "danger" ? Star.danger : Star.ink;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={styles.iconBtnShadow}
+    >
+      {({ pressed }) => (
+        <View
+          style={[
+            styles.iconBtnFace,
+            { width: size, height: size },
+            pressed && styles.iconBtnFacePressed,
+            disabled && styles.iconBtnDisabled,
+          ]}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={color} />
+          ) : (
+            <Ionicons name={icon} size={iconSize ?? Math.round(size * 0.52)} color={color} />
+          )}
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 // Error card with the failure message and an optional "Try again" button.
 // Pair with a query's `refetch` so a transient network failure is recoverable.
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
@@ -313,6 +369,20 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.3,
   },
+  // Icon button: ink shadow slab under a white face that's offset up-left; on
+  // press the face drops onto the slab for a tactile "click".
+  iconBtnShadow: { borderRadius: 13, backgroundColor: Star.ink, alignSelf: "flex-start" },
+  iconBtnFace: {
+    borderRadius: 12,
+    backgroundColor: Star.surface,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ translateX: -2 }, { translateY: -3 }],
+  },
+  iconBtnFacePressed: { transform: [{ translateX: 0 }, { translateY: 0 }] },
+  iconBtnDisabled: { opacity: 0.5 },
   fieldGroup: { gap: 6 },
   fieldLabel: {
     color: Star.ink,
