@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
-import { Texture } from "@/components/ui/kit";
+import { IconButton, Texture } from "@/components/ui/kit";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
 export type ProfileHeaderProps = {
@@ -110,19 +110,7 @@ export function ProfileHeader({
             </View>
           ) : null}
         </View>
-        {action ? (
-          action
-        ) : onSettings ? (
-          <Pressable
-            onPress={onSettings}
-            style={({ pressed }) => [styles.settingsBtn, pressed && styles.settingsBtnPressed]}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-          >
-            <Ionicons name="settings-outline" size={20} color={Star.ink} />
-          </Pressable>
-        ) : null}
+        {action ? action : onSettings ? <IconButton icon="settings" onPress={onSettings} accessibilityLabel="Settings" /> : null}
       </View>
 
       {bio ? <Text style={styles.bio}>{bio}</Text> : null}
@@ -188,18 +176,6 @@ const makeStyles = (Star: Palette) =>
     locRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     dot: { fontSize: 14, fontWeight: "800", color: Star.ink },
     locText: { flexShrink: 1, fontSize: 13, fontWeight: "700", color: Star.ink },
-    settingsBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
-      // White on the mint header so the control stays visible.
-      backgroundColor: Star.surface,
-      borderWidth: 2,
-      borderColor: Star.ink,
-    },
-    settingsBtnPressed: { opacity: 0.6 },
     name: { fontSize: 24, fontWeight: "900", color: Star.ink, letterSpacing: -0.5 },
     // Ink (not violet/muted) so it stays legible on the mint; the smaller size
     // and lighter weight carry the hierarchy instead of color.

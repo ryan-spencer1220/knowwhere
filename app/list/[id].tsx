@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddPlaceToList } from "@/components/add-place-to-list";
 import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
-import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
-import { deleteList, getListDetail, removePlaceFromList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
+import { deleteList, getListDetail, removePlaceFromList, renameList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -32,6 +32,34 @@ export default function ListDetailScreen() {
   }, [data]);
 
   const [deleting, setDeleting] = useState(false);
+
+  // Inline title editing (owner only).
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  const startRename = () => {
+    if (!data) return;
+    setTitleDraft(data.title);
+    setEditingTitle(true);
+  };
+  const saveRename = async () => {
+    const next = titleDraft.trim();
+    if (!data || !next || next === data.title) {
+      setEditingTitle(false);
+      return;
+    }
+    setSavingTitle(true);
+    try {
+      await renameList(data.id, next);
+      setEditingTitle(false);
+      refetch();
+    } catch {
+      Alert.alert("Couldn't rename", "Something went wrong renaming this list. Please try again.");
+    } finally {
+      setSavingTitle(false);
+    }
+  };
 
   const promptReport = () => {
     if (!id) return;
@@ -114,33 +142,16 @@ export default function ListDetailScreen() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle} numberOfLines={1}>
             {data?.title ?? "List"}
           </Text>
           {isOwner ? (
-            <Pressable
-              onPress={confirmDelete}
-              disabled={deleting}
-              style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
-              hitSlop={8}
-              accessibilityLabel="Delete list"
-            >
-              {deleting ? <ActivityIndicator size="small" color={Star.danger} /> : <Ionicons name="trash-outline" size={22} color={Star.danger} />}
-            </Pressable>
+            <IconButton icon="trash-outline" tone="danger" onPress={confirmDelete} loading={deleting} accessibilityLabel="Delete list" />
           ) : data ? (
-            <Pressable
-              onPress={promptReport}
-              style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-              hitSlop={8}
-              accessibilityLabel="Report list"
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color={Star.ink} />
-            </Pressable>
+            <IconButton icon="ellipsis-horizontal" onPress={promptReport} accessibilityLabel="Report list" />
           ) : (
-            <View style={styles.backBtn} />
+            <View style={styles.headerSpacer} />
           )}
         </View>
       </SafeAreaView>
@@ -156,7 +167,30 @@ export default function ListDetailScreen() {
           <ListMap places={mapPlaces} />
 
           <View style={styles.body}>
-            <Text style={styles.title}>{data.title}</Text>
+            {isOwner && editingTitle ? (
+              <View style={styles.titleEditRow}>
+                <TextInput
+                  value={titleDraft}
+                  onChangeText={setTitleDraft}
+                  style={styles.titleInput}
+                  placeholder="List name"
+                  placeholderTextColor={Star.textMuted}
+                  autoFocus
+                  maxLength={80}
+                  returnKeyType="done"
+                  onSubmitEditing={saveRename}
+                />
+                <IconButton icon="checkmark" onPress={saveRename} loading={savingTitle} size={44} accessibilityLabel="Save list name" />
+                <IconButton icon="close" onPress={() => setEditingTitle(false)} disabled={savingTitle} size={44} accessibilityLabel="Cancel renaming" />
+              </View>
+            ) : (
+              <View style={styles.titleRow}>
+                <Text style={styles.title}>{data.title}</Text>
+                {isOwner ? (
+                  <IconButton icon="pencil" onPress={startRename} size={38} accessibilityLabel={`Rename list ${data.title}`} />
+                ) : null}
+              </View>
+            )}
             <View style={styles.metaRow}>
               <Pressable
                 onPress={() => data.ownerId && router.push({ pathname: "/user/[id]", params: { id: data.ownerId } })}
@@ -255,30 +289,29 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  headerSpacer: { width: 42, height: 42 },
   pressed: { opacity: 0.6 },
-  deleteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.surface,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
   scroll: { paddingBottom: 36 },
   body: { padding: 20, gap: 12 },
-  title: { fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  title: { flex: 1, fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
+  titleEditRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  titleInput: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "900",
+    color: Star.ink,
+    letterSpacing: -0.5,
+    backgroundColor: Star.surface,
+    borderRadius: 12,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   byline: { fontSize: 14, fontWeight: "600", color: Star.textMuted },
   bylineName: { color: Star.pop, fontWeight: "800" },

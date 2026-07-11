@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { formatTypes, getPlaceScreen, priceLabel, type PlaceScreenData } from "@/lib/places";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -44,9 +44,7 @@ export default function PlaceScreen() {
           </View>
         )}
         <SafeAreaView edges={["top"]} style={styles.heroSafe}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
         </SafeAreaView>
       </View>
 
@@ -159,17 +157,6 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   hero: { height: HERO_HEIGHT, backgroundColor: Star.blush, borderBottomWidth: 2.5, borderBottomColor: Star.ink },
   heroPlaceholder: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   heroSafe: { paddingHorizontal: 12, paddingTop: 4 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Star.surface,
-    borderWidth: 2,
-    borderColor: Star.ink,
-  },
-  pressed: { opacity: 0.7 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
   scroll: { padding: 20, paddingBottom: 40, gap: 12 },

@@ -1,15 +1,13 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Texture } from "@/components/ui/kit";
+import { IconButton, Texture } from "@/components/ui/kit";
 import { LEGAL_EFFECTIVE_DATE, type LegalDoc } from "@/constants/legal";
-import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
+import { useThemedStyles, type Palette } from "@/lib/theme";
 
 export function LegalScreen({ doc }: { doc: LegalDoc }) {
   const router = useRouter();
-  const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
@@ -17,13 +15,11 @@ export function LegalScreen({ doc }: { doc: LegalDoc }) {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle} numberOfLines={1}>
             {doc.title}
           </Text>
-          <View style={styles.backBtn} />
+          <View style={styles.iconSpacer} />
         </View>
       </SafeAreaView>
 
@@ -55,8 +51,7 @@ const makeStyles = (Star: Palette) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
-    backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-    pressed: { opacity: 0.6 },
+    iconSpacer: { width: 42, height: 42 },
     headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
     scroll: { padding: 20, paddingBottom: 40, gap: 14 },
     effective: { fontSize: 12, fontWeight: "700", color: Star.textMuted, letterSpacing: 0.4, textTransform: "uppercase" },

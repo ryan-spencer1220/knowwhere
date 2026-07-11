@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, Text
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar, initialsFrom } from "@/components/avatar";
-import { Card, Texture } from "@/components/ui/kit";
+import { Card, IconButton, Texture } from "@/components/ui/kit";
 import { deleteAccount } from "@/lib/account";
 import { useAuth } from "@/lib/auth";
 import { pickAndUploadAvatar } from "@/lib/avatar";
@@ -124,11 +124,9 @@ export default function SettingsScreen() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <Text style={styles.headerTitle}>Settings</Text>
-          <View style={styles.backBtn} />
+          <View style={styles.headerSpacer} />
         </View>
       </SafeAreaView>
 
@@ -314,7 +312,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  headerSpacer: { width: 42, height: 42 },
   pressed: { opacity: 0.6 },
   headerTitle: { flex: 1, textAlign: "center", fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
   loader: { marginTop: 40 },

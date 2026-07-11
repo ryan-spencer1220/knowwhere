@@ -1,14 +1,13 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { initialsFrom } from "@/components/avatar";
 import { FollowButton } from "@/components/follow-button";
 import { ListCover } from "@/components/list-cover";
 import { ProfileHeader } from "@/components/profile-header";
-import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
+import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { timeAgo } from "@/lib/lists";
 import { blockUser, isBlocked, REPORT_REASONS, reportContent, unblockUser } from "@/lib/moderation";
@@ -86,16 +85,12 @@ export default function UserProfileScreen() {
       <Texture />
       <SafeAreaView edges={["top"]} style={styles.topBar}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8} accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
           <View style={styles.headerSpacer} />
           {data && !data.isSelf ? (
-            <Pressable onPress={openMenu} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8} accessibilityLabel="More options">
-              <Ionicons name="ellipsis-horizontal" size={22} color={Star.ink} />
-            </Pressable>
+            <IconButton icon="ellipsis-horizontal" onPress={openMenu} accessibilityLabel="More options" />
           ) : (
-            <View style={styles.backBtn} />
+            <View style={styles.iconSpacer} />
           )}
         </View>
       </SafeAreaView>
@@ -172,8 +167,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  pressed: { opacity: 0.6 },
+  iconSpacer: { width: 42, height: 42 },
   // Mint nav bar so it reads as one continuous colored block with the header.
   topBar: { backgroundColor: Star.base },
   headerSpacer: { flex: 1 },

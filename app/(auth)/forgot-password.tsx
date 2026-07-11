@@ -1,17 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Button, Field, Texture } from "@/components/ui/kit";
+import { Button, Field, IconButton, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
-import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
+import { useThemedStyles, type Palette } from "@/lib/theme";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { resetPassword } = useAuth();
-  const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const [email, setEmail] = useState("");
@@ -41,9 +39,7 @@ export default function ForgotPasswordScreen() {
       <Texture />
       <SafeAreaView style={styles.flex} edges={["top", "bottom"]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color={Star.ink} />
-          </Pressable>
+          <IconButton icon="chevron-back" onPress={() => router.back()} accessibilityLabel="Back" />
         </View>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -88,8 +84,6 @@ const makeStyles = (Star: Palette) =>
     fill: { flex: 1, backgroundColor: Star.base },
     flex: { flex: 1 },
     header: { paddingHorizontal: 12, paddingVertical: 8 },
-    backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-    pressed: { opacity: 0.6 },
     scroll: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingBottom: 36 },
     cardShadow: { borderRadius: 26, backgroundColor: Star.ink },
     card: {
