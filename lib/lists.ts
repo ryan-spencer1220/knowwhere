@@ -227,6 +227,12 @@ export async function setListVisibility(listId: string, isPublic: boolean): Prom
   if (error) throw error;
 }
 
+// Rename a list. RLS restricts this to the list's owner.
+export async function renameList(listId: string, title: string): Promise<void> {
+  const { error } = await supabase.from("lists").update({ title: title.trim() }).eq("id", listId);
+  if (error) throw error;
+}
+
 // Delete a list (and its places/saves via ON DELETE CASCADE). RLS restricts
 // this to the list's owner.
 export async function deleteList(listId: string): Promise<void> {

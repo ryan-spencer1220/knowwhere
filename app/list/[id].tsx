@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddPlaceToList } from "@/components/add-place-to-list";
@@ -9,7 +9,7 @@ import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
 import { Card, ErrorState, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
-import { deleteList, getListDetail, removePlaceFromList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
+import { deleteList, getListDetail, removePlaceFromList, renameList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -32,6 +32,34 @@ export default function ListDetailScreen() {
   }, [data]);
 
   const [deleting, setDeleting] = useState(false);
+
+  // Inline title editing (owner only).
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  const startRename = () => {
+    if (!data) return;
+    setTitleDraft(data.title);
+    setEditingTitle(true);
+  };
+  const saveRename = async () => {
+    const next = titleDraft.trim();
+    if (!data || !next || next === data.title) {
+      setEditingTitle(false);
+      return;
+    }
+    setSavingTitle(true);
+    try {
+      await renameList(data.id, next);
+      setEditingTitle(false);
+      refetch();
+    } catch {
+      Alert.alert("Couldn't rename", "Something went wrong renaming this list. Please try again.");
+    } finally {
+      setSavingTitle(false);
+    }
+  };
 
   const promptReport = () => {
     if (!id) return;
@@ -156,7 +184,51 @@ export default function ListDetailScreen() {
           <ListMap places={mapPlaces} />
 
           <View style={styles.body}>
-            <Text style={styles.title}>{data.title}</Text>
+            {isOwner && editingTitle ? (
+              <View style={styles.titleEditRow}>
+                <TextInput
+                  value={titleDraft}
+                  onChangeText={setTitleDraft}
+                  style={styles.titleInput}
+                  placeholder="List name"
+                  placeholderTextColor={Star.textMuted}
+                  autoFocus
+                  maxLength={80}
+                  returnKeyType="done"
+                  onSubmitEditing={saveRename}
+                />
+                <Pressable
+                  onPress={saveRename}
+                  disabled={savingTitle}
+                  style={({ pressed }) => [styles.titleIconBtn, pressed && styles.pressed]}
+                  hitSlop={6}
+                  accessibilityLabel="Save list name"
+                >
+                  {savingTitle ? <ActivityIndicator size="small" color={Star.ink} /> : <Ionicons name="checkmark" size={20} color={Star.ink} />}
+                </Pressable>
+                <Pressable
+                  onPress={() => setEditingTitle(false)}
+                  disabled={savingTitle}
+                  style={({ pressed }) => [styles.titleIconBtn, pressed && styles.pressed]}
+                  hitSlop={6}
+                  accessibilityLabel="Cancel renaming"
+                >
+                  <Ionicons name="close" size={20} color={Star.ink} />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={isOwner ? startRename : undefined}
+                disabled={!isOwner}
+                style={styles.titleRow}
+                hitSlop={4}
+                accessibilityRole={isOwner ? "button" : undefined}
+                accessibilityLabel={isOwner ? `Rename list ${data.title}` : undefined}
+              >
+                <Text style={styles.title}>{data.title}</Text>
+                {isOwner ? <Ionicons name="pencil" size={18} color={Star.textMuted} style={styles.titlePencil} /> : null}
+              </Pressable>
+            )}
             <View style={styles.metaRow}>
               <Pressable
                 onPress={() => data.ownerId && router.push({ pathname: "/user/[id]", params: { id: data.ownerId } })}
@@ -278,7 +350,33 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   centerPad: { padding: 20 },
   scroll: { paddingBottom: 36 },
   body: { padding: 20, gap: 12 },
-  title: { fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  title: { flex: 1, fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
+  titlePencil: { marginTop: 8 },
+  titleEditRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  titleInput: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "900",
+    color: Star.ink,
+    letterSpacing: -0.5,
+    backgroundColor: Star.surface,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  titleIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Star.surface,
+    borderWidth: 2,
+    borderColor: Star.ink,
+  },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   byline: { fontSize: 14, fontWeight: "600", color: Star.textMuted },
   bylineName: { color: Star.pop, fontWeight: "800" },

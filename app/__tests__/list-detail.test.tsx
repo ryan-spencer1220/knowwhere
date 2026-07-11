@@ -54,4 +54,9 @@ describe("List detail screen", () => {
     expect(screen.getByLabelText("Report list")).toBeTruthy();
     expect(screen.queryByLabelText("Delete list")).toBeNull();
   });
+
+  it("does not offer rename to non-owners", () => {
+    render(<ListDetailScreen />);
+    expect(screen.queryByLabelText(/^Rename list/)).toBeNull();
+  });
 });
