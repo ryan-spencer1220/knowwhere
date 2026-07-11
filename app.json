@@ -2,7 +2,7 @@
   "expo": {
     "name": "KnowWhere",
     "slug": "knowwhere",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "knowwhere",
@@ -11,7 +11,7 @@
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.rspencer1220.KnowWhere",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
