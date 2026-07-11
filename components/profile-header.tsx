@@ -110,7 +110,7 @@ export function ProfileHeader({
             </View>
           ) : null}
         </View>
-        {action ? action : onSettings ? <IconButton icon="settings-outline" onPress={onSettings} accessibilityLabel="Settings" /> : null}
+        {action ? action : onSettings ? <IconButton icon="settings" onPress={onSettings} accessibilityLabel="Settings" /> : null}
       </View>
 
       {bio ? <Text style={styles.bio}>{bio}</Text> : null}
