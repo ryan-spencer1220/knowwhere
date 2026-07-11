@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Field } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
-import { fetchDetails, fetchPredictions, type Prediction, type Spot } from "@/lib/places-search";
+import { fetchDetails, fetchPredictions, type Coords, type Prediction, type Spot } from "@/lib/places-search";
 import { saveList } from "@/lib/lists-write";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
@@ -33,6 +34,26 @@ export function useAddFlow() {
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The user's location, used to bias autocomplete results toward where they are.
+  const coords = useRef<Coords | null>(null);
+
+  // Grab the user's location once (best-effort) so search suggestions are local.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (!cancelled) coords.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      } catch {
+        // Permission denied or unavailable — fall back to unbiased results.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const alreadyAdded = (id: string) => spots.some((s) => s.id === id);
 
@@ -49,7 +70,7 @@ export function useAddFlow() {
     }
     let active = true;
     const timer = setTimeout(() => {
-      fetchPredictions(q)
+      fetchPredictions(q, coords.current)
         .then((preds) => {
           if (active) setPredictions(preds);
         })

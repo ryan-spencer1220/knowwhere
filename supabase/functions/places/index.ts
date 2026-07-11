@@ -31,10 +31,20 @@ Deno.serve(async (req) => {
       const input: string = (body.input ?? "").trim();
       if (input.length < 2) return json({ predictions: [] });
 
+      // Bias results toward the user's location. Without this, Google falls back
+      // to the edge server's IP (a data center), so generic queries like "pizza"
+      // surface places near the server instead of near the user.
+      const reqBody: Record<string, unknown> = { input };
+      if (typeof body.latitude === "number" && typeof body.longitude === "number") {
+        reqBody.locationBias = {
+          circle: { center: { latitude: body.latitude, longitude: body.longitude }, radius: 50000.0 },
+        };
+      }
+
       const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Goog-Api-Key": GOOGLE_KEY },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify(reqBody),
       });
       const data = await res.json();
       if (!res.ok) return json({ error: data?.error?.message ?? "Places autocomplete failed." }, 502);
