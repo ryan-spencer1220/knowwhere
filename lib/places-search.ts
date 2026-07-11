@@ -35,11 +35,14 @@ function mockPredictions(query: string): Prediction[] {
     .map((s) => ({ placeId: s.id, primary: s.name, secondary: s.address }));
 }
 
-export async function fetchPredictions(query: string): Promise<Prediction[]> {
+export async function fetchPredictions(query: string, coords?: Coords | null): Promise<Prediction[]> {
   if (!USE_REAL_PLACES) return mockPredictions(query);
-  const { data, error } = await supabase.functions.invoke("places", {
-    body: { type: "autocomplete", input: query },
-  });
+  const body: Record<string, unknown> = { type: "autocomplete", input: query };
+  if (coords) {
+    body.latitude = coords.latitude;
+    body.longitude = coords.longitude;
+  }
+  const { data, error } = await supabase.functions.invoke("places", { body });
   if (error) throw error;
   return (data?.predictions ?? []) as Prediction[];
 }
