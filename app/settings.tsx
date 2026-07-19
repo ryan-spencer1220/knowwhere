@@ -133,7 +133,12 @@ export default function SettingsScreen() {
       {loading || !profile ? (
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
           {/* Edit profile */}
           <Text style={styles.sectionTitle}>Profile</Text>
           <Card style={styles.card}>

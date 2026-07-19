@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Field } from "@/components/ui/kit";
@@ -163,6 +163,20 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const hasSelected = flow.selected && !flow.alreadyAdded(flow.selected.id);
+
+  // The list builder floats at the bottom over the map, so lift it above the
+  // keyboard (which would otherwise cover the "Name your list" field).
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   // Offer the import shortcut only on a clean slate, so it never covers results.
   // Native-only: file picking + reading isn't wired for the web preview.
   const showImport =
@@ -219,7 +233,15 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
       </View>
 
       {/* Bottom: selected-spot card and/or list builder */}
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]} pointerEvents="box-none">
+      <View
+        style={[
+          styles.bottom,
+          keyboardHeight > 0
+            ? { bottom: keyboardHeight, paddingBottom: 12 }
+            : { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE },
+        ]}
+        pointerEvents="box-none"
+      >
         {hasSelected ? (
           <View style={styles.sheet}>
             <View style={styles.flex}>
