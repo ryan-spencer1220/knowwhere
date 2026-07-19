@@ -102,7 +102,8 @@ export default function UserProfileScreen() {
           <ErrorState message={error ?? "Could not load this profile."} onRetry={refetch} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <>
+          {/* Pinned to the top so it stays put while only the lists scroll. */}
           <ProfileHeader
             avatarUrl={data.profile.avatar_url}
             initials={initialsFrom(data.profile.display_name, data.profile.username)}
@@ -127,32 +128,34 @@ export default function UserProfileScreen() {
             }
           />
 
-          <View style={styles.listsSection}>
-            <Text style={styles.sectionTitle}>Lists</Text>
-            {data.lists.length === 0 ? (
-              <Card style={styles.empty}>
-                <Text style={styles.emptyText}>No public lists yet.</Text>
-              </Card>
-            ) : (
-              data.lists.map((list) => (
-                <Card
-                  key={list.id}
-                  cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
-                  onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
-                >
-                  <Text style={styles.listTitle}>{list.title}</Text>
-                  {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
-                  <View style={styles.metaRow}>
-                    <Text style={styles.meta}>
-                      <Text style={styles.metaStrong}>{list.placesCount}</Text> places
-                    </Text>
-                    <Text style={styles.meta}>{timeAgo(list.createdAt)}</Text>
-                  </View>
+          <ScrollView style={styles.listFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.listsSection}>
+              <Text style={styles.sectionTitle}>Lists</Text>
+              {data.lists.length === 0 ? (
+                <Card style={styles.empty}>
+                  <Text style={styles.emptyText}>No public lists yet.</Text>
                 </Card>
-              ))
-            )}
-          </View>
-        </ScrollView>
+              ) : (
+                data.lists.map((list) => (
+                  <Card
+                    key={list.id}
+                    cover={<ListCover url={list.coverImageUrl} seed={list.id} />}
+                    onPress={() => router.push({ pathname: "/list/[id]", params: { id: list.id } })}
+                  >
+                    <Text style={styles.listTitle}>{list.title}</Text>
+                    {list.city || list.location ? <Pill icon="location" label={list.city ?? list.location!} /> : null}
+                    <View style={styles.metaRow}>
+                      <Text style={styles.meta}>
+                        <Text style={styles.metaStrong}>{list.placesCount}</Text> places
+                      </Text>
+                      <Text style={styles.meta}>{timeAgo(list.createdAt)}</Text>
+                    </View>
+                  </Card>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </>
       )}
     </View>
   );
@@ -173,6 +176,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   headerSpacer: { flex: 1 },
   loader: { marginTop: 40 },
   centerPad: { padding: 20 },
+  listFlex: { flex: 1 },
   scroll: { paddingBottom: 36 },
   listsSection: { paddingHorizontal: 20, paddingTop: 18, gap: 16 },
   sectionTitle: { fontSize: 20, fontWeight: "900", color: Star.ink, letterSpacing: -0.4 },
