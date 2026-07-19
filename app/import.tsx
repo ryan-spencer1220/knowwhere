@@ -151,7 +151,12 @@ export default function ImportScreen() {
         </View>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         {phase.step === "idle" ? (
           <View style={styles.intro}>
             <Ionicons name="link-outline" size={40} color={Star.ink} />

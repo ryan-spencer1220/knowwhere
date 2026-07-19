@@ -163,7 +163,12 @@ export default function ListDetailScreen() {
           <ErrorState message={error ?? "Could not load this list."} onRetry={refetch} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
           <ListMap places={mapPlaces} />
 
           <View style={styles.body}>
