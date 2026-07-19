@@ -43,39 +43,39 @@ export default function ProfileScreen() {
     }
   };
 
-  // Header (identity + stats) plus the "Your lists" section title. Rendered only
-  // once profile data is loaded; the full-bleed white panel handles its own top
-  // safe-area inset so it paints under the status bar.
-  const header = data ? (
-    <>
-      <ProfileHeader
-        avatarUrl={localAvatar ?? data.profile.avatar_url}
-        initials={initialsFrom(data.profile.display_name, data.profile.username)}
-        displayName={data.profile.display_name}
-        username={data.profile.username}
-        bio={data.profile.bio}
-        city={data.profile.city}
-        stats={[
-          { key: "lists", label: "Lists", value: data.lists.length },
-          { key: "followers", label: "Followers", value: data.followers },
-          { key: "following", label: "Following", value: data.following },
-        ]}
-        uploading={uploading}
-        uploadError={uploadError}
-        onPickAvatar={onPickAvatar}
-        onSettings={() => router.push("/settings")}
-        onStatPress={(key) =>
-          session
-            ? router.push({
-                pathname: "/connections/[id]",
-                params: { id: session.user.id, tab: key, name: data.profile.display_name ?? "You" },
-              })
-            : undefined
-        }
-      />
-      <Text style={styles.sectionTitle}>Your lists</Text>
-    </>
+  // Identity + stats panel. Pinned to the top of the screen (outside the list)
+  // so it stays put while only the lists scroll beneath it. The full-bleed panel
+  // handles its own top safe-area inset so it paints under the status bar.
+  const profileHeader = data ? (
+    <ProfileHeader
+      avatarUrl={localAvatar ?? data.profile.avatar_url}
+      initials={initialsFrom(data.profile.display_name, data.profile.username)}
+      displayName={data.profile.display_name}
+      username={data.profile.username}
+      bio={data.profile.bio}
+      city={data.profile.city}
+      stats={[
+        { key: "lists", label: "Lists", value: data.lists.length },
+        { key: "followers", label: "Followers", value: data.followers },
+        { key: "following", label: "Following", value: data.following },
+      ]}
+      uploading={uploading}
+      uploadError={uploadError}
+      onPickAvatar={onPickAvatar}
+      onSettings={() => router.push("/settings")}
+      onStatPress={(key) =>
+        session
+          ? router.push({
+              pathname: "/connections/[id]",
+              params: { id: session.user.id, tab: key, name: data.profile.display_name ?? "You" },
+            })
+          : undefined
+      }
+    />
   ) : null;
+
+  // The "Your lists" title scrolls with the lists (inside the list).
+  const listsHeader = data ? <Text style={styles.sectionTitle}>Your lists</Text> : null;
 
   // Loading/error have no header, so center them below the status bar; the
   // no-lists card sits inline under the section title.
@@ -99,10 +99,12 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <Texture />
+      {profileHeader}
       <FlatList
+        style={styles.listFlex}
         data={data?.lists ?? []}
         keyExtractor={(list) => list.id}
-        ListHeaderComponent={header}
+        ListHeaderComponent={listsHeader}
         ListEmptyComponent={empty}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + FLOATING_TAB_BAR_SPACE }]}
@@ -140,6 +142,7 @@ export default function ProfileScreen() {
 const makeStyles = (Star: Palette) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: Star.surface },
+    listFlex: { flex: 1 },
     listContent: { flexGrow: 1 },
     rowPad: { paddingHorizontal: 20 },
     sep: { height: 16 },
