@@ -9,12 +9,27 @@ export type NearbyPlace = {
   address: string | null;
   latitude: number;
   longitude: number;
+  listId: string | null;
   listTitle: string | null;
   ownerId: string | null;
   ownerName: string | null;
   ownerUsername: string | null;
   distanceKm: number;
 };
+
+export type OwnerList = { id: string; title: string };
+
+// Every list belonging to a person, newest first. RLS keeps other people's
+// private lists out, so this only ever returns lists the viewer may see.
+export async function getOwnerLists(ownerId: string): Promise<OwnerList[]> {
+  const { data, error } = await supabase
+    .from("lists")
+    .select("id, title")
+    .eq("owner_id", ownerId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as OwnerList[];
+}
 
 function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
@@ -33,8 +48,8 @@ type RawNearbyRow = {
   latitude: number | null;
   longitude: number | null;
   list:
-    | { title: string | null; owner: RawOwner | RawOwner[] | null }
-    | { title: string | null; owner: RawOwner | RawOwner[] | null }[]
+    | { id: string; title: string | null; owner: RawOwner | RawOwner[] | null }
+    | { id: string; title: string | null; owner: RawOwner | RawOwner[] | null }[]
     | null;
 };
 
@@ -67,7 +82,7 @@ export async function getNearbyPlaces(
   const lngDelta = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
   const { data, error } = await supabase
     .from("list_places")
-    .select("id, name, address, latitude, longitude, list:lists!inner(title, owner:profiles!owner_id(id, username, display_name))")
+    .select("id, name, address, latitude, longitude, list:lists!inner(id, title, owner:profiles!owner_id(id, username, display_name))")
     .in("list_id", listIds)
     .gte("latitude", lat - latDelta)
     .lte("latitude", lat + latDelta)
@@ -86,6 +101,7 @@ export async function getNearbyPlaces(
         address: r.address,
         latitude: r.latitude as number,
         longitude: r.longitude as number,
+        listId: list?.id ?? null,
         listTitle: list?.title ?? null,
         ownerId: owner?.id ?? null,
         ownerName: owner?.display_name ?? null,
