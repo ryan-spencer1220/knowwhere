@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Card } from "@/components/ui/kit";
@@ -79,8 +79,13 @@ export function useNearbyPlaces(center: Coords | null) {
   return { places: filtered, loading, owners, ownerFilter, setOwnerFilter };
 }
 
-// Horizontal chip row to filter nearby places by person. Renders nothing until
-// there are at least two people to choose between.
+// Show a search box inside the picker once the people list gets long enough to
+// scroll uncomfortably (e.g. someone who follows many active mappers).
+const SEARCH_THRESHOLD = 8;
+
+// Dropdown to filter nearby places by person. A compact trigger opens a modal
+// picker (searchable when long) so it scales to hundreds of followed people.
+// Renders nothing until there are at least two people to choose between.
 export function PersonFilter({
   owners,
   ownerFilter,
@@ -92,36 +97,98 @@ export function PersonFilter({
 }) {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const showSearch = owners.length > SEARCH_THRESHOLD;
+  const q = query.trim().toLowerCase();
+  const matches = useMemo(
+    () => (q ? owners.filter((o) => o.label.toLowerCase().includes(q)) : owners),
+    [owners, q],
+  );
+
   if (owners.length < 2) return null;
 
-  const chips: OwnerOption[] = [{ id: "__all__", label: "Everyone" }, ...owners];
+  const currentLabel = ownerFilter ? owners.find((o) => o.id === ownerFilter)?.label ?? "Everyone" : "Everyone";
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+  };
+  const choose = (id: string | null) => {
+    onSelect(id);
+    close();
+  };
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filterRow}
-      keyboardShouldPersistTaps="handled"
-    >
-      {chips.map((o) => {
-        const value = o.id === "__all__" ? null : o.id;
-        const active = ownerFilter === value;
-        return (
-          <Pressable
-            key={o.id}
-            onPress={() => onSelect(value)}
-            style={[styles.chip, active && styles.chipActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={o.id === "__all__" ? "Show everyone" : `Show only ${o.label}`}
-          >
-            {o.label === "You" ? (
-              <Ionicons name="person" size={12} color={active ? Star.surface : Star.ink} />
+    <View style={styles.filterRow}>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Filter by person. Currently showing ${currentLabel}.`}
+      >
+        <Ionicons name="filter" size={14} color={Star.ink} />
+        <Text style={styles.triggerText} numberOfLines={1}>
+          {currentLabel}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={Star.textMuted} />
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
+        <Pressable style={styles.backdrop} onPress={close}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Show places from</Text>
+              <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={20} color={Star.ink} />
+              </Pressable>
+            </View>
+
+            {showSearch ? (
+              <View style={styles.searchRow}>
+                <Ionicons name="search" size={16} color={Star.textMuted} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search people"
+                  placeholderTextColor={Star.textMuted}
+                  style={styles.searchInput}
+                  autoCorrect={false}
+                  autoFocus
+                />
+              </View>
             ) : null}
-            <Text style={[styles.chipText, active && styles.chipTextActive]}>{o.label}</Text>
+
+            <ScrollView style={styles.optionScroll} keyboardShouldPersistTaps="handled">
+              {!q ? <OptionRow label="Everyone" active={ownerFilter === null} onPress={() => choose(null)} /> : null}
+              {matches.map((o) => (
+                <OptionRow key={o.id} label={o.label} active={ownerFilter === o.id} onPress={() => choose(o.id)} />
+              ))}
+              {q && matches.length === 0 ? <Text style={styles.noMatch}>No one matches “{query.trim()}”.</Text> : null}
+            </ScrollView>
           </Pressable>
-        );
-      })}
-    </ScrollView>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function OptionRow({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const Star = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.optionRow, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      {label === "You" ? <Ionicons name="person" size={14} color={Star.ink} /> : null}
+      <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={1}>
+        {label}
+      </Text>
+      {active ? <Ionicons name="checkmark" size={18} color={Star.pop} style={styles.optionCheck} /> : null}
+    </Pressable>
   );
 }
 
@@ -192,21 +259,58 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
   title: { fontSize: 32, fontWeight: "900", color: Star.ink, letterSpacing: -1 },
   subtitle: { fontSize: 14, fontWeight: "600", color: Star.ink, opacity: 0.65, marginTop: 2 },
-  filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: 12 },
-  chip: {
+  pressed: { opacity: 0.7 },
+  filterRow: { paddingHorizontal: 20, paddingBottom: 12 },
+  trigger: {
+    alignSelf: "flex-start",
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 14,
+    gap: 7,
+    paddingLeft: 14,
+    paddingRight: 10,
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 2,
     borderColor: Star.ink,
     backgroundColor: Star.surface,
   },
-  chipActive: { backgroundColor: Star.pop },
-  chipText: { fontSize: 13, fontWeight: "800", color: Star.ink },
-  chipTextActive: { color: Star.surface },
+  triggerText: { flexShrink: 1, fontSize: 13, fontWeight: "800", color: Star.ink },
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(20,18,16,0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  sheet: {
+    backgroundColor: Star.surface,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: Star.ink,
+    padding: 16,
+    gap: 12,
+    maxHeight: "70%",
+  },
+  sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sheetTitle: { fontSize: 17, fontWeight: "900", color: Star.ink, letterSpacing: -0.3 },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Star.base,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: "600", color: Star.text, padding: 0 },
+  optionScroll: { flexGrow: 0 },
+  optionRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12 },
+  optionText: { flex: 1, fontSize: 15, fontWeight: "700", color: Star.ink },
+  optionTextActive: { color: Star.pop, fontWeight: "800" },
+  optionCheck: { marginLeft: "auto" },
+  noMatch: { fontSize: 14, fontWeight: "500", color: Star.textMuted, paddingVertical: 12 },
   listContent: { padding: 16, gap: 12 },
   loader: { marginTop: 30 },
   empty: { alignItems: "center", gap: 6, paddingVertical: 24 },
