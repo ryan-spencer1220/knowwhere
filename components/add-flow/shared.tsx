@@ -2,14 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Field } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
+import { getMyLists, type ListCard } from "@/lib/lists";
 import { fetchDetails, fetchPredictions, type Coords, type Prediction, type Spot } from "@/lib/places-search";
-import { saveList } from "@/lib/lists-write";
+import { addSpotToList, saveList } from "@/lib/lists-write";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
 export type { Prediction, Spot };
@@ -34,6 +35,11 @@ export function useAddFlow() {
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Existing-list picker: adding the selected spot to a list the user already has.
+  const [pickingList, setPickingList] = useState(false);
+  const [myLists, setMyLists] = useState<ListCard[]>([]);
+  const [listsLoading, setListsLoading] = useState(false);
+  const [addingListId, setAddingListId] = useState<string | null>(null);
   // The user's location, used to bias autocomplete results toward where they are.
   const coords = useRef<Coords | null>(null);
 
@@ -102,6 +108,48 @@ export function useAddFlow() {
   };
   const removeSpot = (id: string) => setSpots((prev) => prev.filter((s) => s.id !== id));
 
+  // Open the "add to an existing list" picker, loading the user's lists fresh so
+  // place counts (used to position the new place) are current.
+  const openListPicker = async () => {
+    if (!session) {
+      setError("You need to be signed in.");
+      return;
+    }
+    setPickingList(true);
+    setListsLoading(true);
+    try {
+      setMyLists(await getMyLists(session.user.id));
+    } catch {
+      setError("Couldn't load your lists.");
+    } finally {
+      setListsLoading(false);
+    }
+  };
+  const closeListPicker = () => setPickingList(false);
+
+  // Append the selected spot to an existing list. Keeps the picker open on a
+  // duplicate so the user can choose a different list.
+  const addSelectedToList = async (list: ListCard) => {
+    if (!selected || !session || addingListId) return;
+    const spot = selected;
+    setAddingListId(list.id);
+    try {
+      const result = await addSpotToList(list.id, spot);
+      if (result === "duplicate") {
+        Alert.alert("Already saved", `${spot.name} is already in "${list.title}".`);
+        return;
+      }
+      setPickingList(false);
+      setSelected(null);
+      setQuery("");
+      Alert.alert("Added", `Added ${spot.name} to "${list.title}".`);
+    } catch (err) {
+      Alert.alert("Couldn't add", err instanceof Error ? err.message : "Please try again.");
+    } finally {
+      setAddingListId(null);
+    }
+  };
+
   const save = async () => {
     setError(null);
     if (spots.length === 0) {
@@ -144,6 +192,13 @@ export function useAddFlow() {
     addSelected,
     removeSpot,
     alreadyAdded,
+    pickingList,
+    myLists,
+    listsLoading,
+    addingListId,
+    openListPicker,
+    closeListPicker,
+    addSelectedToList,
     listName,
     setListName,
     isPublic,
@@ -242,17 +297,71 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
         ]}
         pointerEvents="box-none"
       >
-        {hasSelected ? (
-          <View style={styles.sheet}>
-            <View style={styles.flex}>
+        {flow.pickingList ? (
+          <View style={[styles.sheet, styles.builder]}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.builderTitle}>Add to a list</Text>
+              <Pressable onPress={flow.closeListPicker} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={20} color={Star.ink} />
+              </Pressable>
+            </View>
+            {flow.listsLoading ? (
+              <ActivityIndicator color={Star.ink} style={styles.pickerLoader} />
+            ) : flow.myLists.length === 0 ? (
+              <Text style={styles.pickerEmpty}>You don&apos;t have any lists yet. Start a new one below.</Text>
+            ) : (
+              <ScrollView style={styles.pickerScroll} keyboardShouldPersistTaps="handled">
+                {flow.myLists.map((l, i) => (
+                  <Pressable
+                    key={l.id}
+                    onPress={() => flow.addSelectedToList(l)}
+                    disabled={!!flow.addingListId}
+                    style={({ pressed }) => [styles.pickerRow, i > 0 && styles.resultDivider, pressed && styles.pressed]}
+                  >
+                    <View style={styles.flex}>
+                      <Text style={styles.pickerName} numberOfLines={1}>
+                        {l.title}
+                      </Text>
+                      <Text style={styles.pickerMeta}>
+                        {l.placesCount} {l.placesCount === 1 ? "place" : "places"}
+                      </Text>
+                    </View>
+                    {flow.addingListId === l.id ? (
+                      <ActivityIndicator color={Star.ink} />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={18} color={Star.textMuted} />
+                    )}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        ) : hasSelected ? (
+          <View style={[styles.sheet, styles.selectedSheet]}>
+            <View>
               <Text style={styles.spotName}>{flow.selected!.name}</Text>
               <Text style={styles.spotAddress}>{flow.selected!.address}</Text>
             </View>
-            <Button label="Add spot" onPress={flow.addSelected} style={styles.addBtn} />
+            <View style={styles.selectedActions}>
+              <Pressable
+                onPress={flow.openListPicker}
+                style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Add to an existing list"
+              >
+                <Ionicons name="add" size={17} color={Star.ink} />
+                <Text style={styles.secondaryBtnText}>Add to a list</Text>
+              </Pressable>
+              <Button
+                label={flow.spots.length > 0 ? "Add to new" : "New list"}
+                onPress={flow.addSelected}
+                style={styles.primaryBtn}
+              />
+            </View>
           </View>
         ) : null}
 
-        {flow.spots.length > 0 ? (
+        {!flow.pickingList && flow.spots.length > 0 ? (
           <View style={[styles.sheet, styles.builder]}>
             <Text style={styles.builderTitle}>
               {flow.spots.length} {flow.spots.length === 1 ? "spot" : "spots"} added
@@ -370,7 +479,30 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   },
   spotName: { fontSize: 16, fontWeight: "800", color: Star.ink },
   spotAddress: { fontSize: 13, fontWeight: "500", color: Star.textMuted },
-  addBtn: { paddingHorizontal: 22, paddingVertical: 12 },
+  pressed: { opacity: 0.7 },
+  selectedSheet: { flexDirection: "column", alignItems: "stretch", gap: 12 },
+  selectedActions: { flexDirection: "row", gap: 10 },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    backgroundColor: Star.surface,
+  },
+  secondaryBtnText: { fontSize: 15, fontWeight: "800", color: Star.ink },
+  primaryBtn: { flex: 1 },
+  pickerHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  pickerLoader: { marginVertical: 16 },
+  pickerEmpty: { fontSize: 14, fontWeight: "500", color: Star.textMuted },
+  pickerScroll: { maxHeight: 240 },
+  pickerRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
+  pickerName: { fontSize: 15, fontWeight: "800", color: Star.ink },
+  pickerMeta: { fontSize: 13, fontWeight: "600", color: Star.textMuted, marginTop: 1 },
   builder: {
     flexDirection: "column",
     alignItems: "stretch",
