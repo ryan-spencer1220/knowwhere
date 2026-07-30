@@ -21,9 +21,10 @@ export async function saveList({ ownerId, title, isPublic, spots }: SaveListInpu
 
   const rows = spots.map((s, i) => ({
     list_id: list.id,
-    google_place_id: s.id,
+    // Custom pins have no Google Place backing them.
+    google_place_id: s.custom ? null : s.id,
     name: s.name,
-    address: s.address,
+    address: s.address || null,
     latitude: s.latitude,
     longitude: s.longitude,
     position: i,
@@ -31,8 +32,10 @@ export async function saveList({ ownerId, title, isPublic, spots }: SaveListInpu
   const { error: e2 } = await supabase.from("list_places").insert(rows);
   if (e2) throw e2;
 
-  // Attach a cover photo from the first spot (best-effort; never blocks save).
-  const cover = await fetchCoverPhoto(spots[0].id);
+  // Attach a cover photo from the first Google-backed spot (best-effort; never
+  // blocks save, and skipped for lists made only of custom pins).
+  const coverSpot = spots.find((s) => !s.custom);
+  const cover = coverSpot ? await fetchCoverPhoto(coverSpot.id) : null;
   if (cover) await supabase.from("lists").update({ cover_image_url: cover }).eq("id", list.id);
 
   return list.id as string;
@@ -64,4 +67,28 @@ export async function addSpotToList(listId: string, spot: Spot): Promise<"added"
   });
   if (insertErr) throw insertErr;
   return "added";
+}
+
+export type CustomPin = { name: string; latitude: number; longitude: number; address?: string | null };
+
+// Append a user-dropped pin (no Google Place) to an existing list, positioned
+// after its last place. RLS restricts writes to the list's owner.
+export async function addCustomPinToList(listId: string, pin: CustomPin): Promise<void> {
+  const { data: existing, error: readErr } = await supabase
+    .from("list_places")
+    .select("position")
+    .eq("list_id", listId);
+  if (readErr) throw readErr;
+
+  const nextPosition = (existing ?? []).reduce((max, r) => Math.max(max, r.position + 1), 0);
+  const { error: insertErr } = await supabase.from("list_places").insert({
+    list_id: listId,
+    google_place_id: null,
+    name: pin.name.trim(),
+    address: pin.address?.trim() || null,
+    latitude: pin.latitude,
+    longitude: pin.longitude,
+    position: nextPosition,
+  });
+  if (insertErr) throw insertErr;
 }

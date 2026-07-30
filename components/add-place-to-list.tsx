@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { DropPinModal, type DroppedPin } from "@/components/drop-pin";
 import { toFriendlyMessage } from "@/lib/errors";
 import { addPlaceToList } from "@/lib/lists";
+import { addCustomPinToList } from "@/lib/lists-write";
 import { fetchDetails, fetchPredictions, type Prediction } from "@/lib/places-search";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 
@@ -30,6 +32,8 @@ export function AddPlaceToList({
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pinSaving, setPinSaving] = useState(false);
 
   // Debounced autocomplete as the user types.
   useEffect(() => {
@@ -76,6 +80,20 @@ export function AddPlaceToList({
       setError(toFriendlyMessage(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const addPin = async (pin: DroppedPin) => {
+    setPinSaving(true);
+    setError(null);
+    try {
+      await addCustomPinToList(listId, pin);
+      setPinOpen(false);
+      onAdded();
+    } catch (e) {
+      setError(toFriendlyMessage(e));
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -135,6 +153,21 @@ export function AddPlaceToList({
           </View>
         </Pressable>
       ))}
+
+      {Platform.OS !== "web" ? (
+        <>
+          <Pressable
+            onPress={() => setPinOpen(true)}
+            style={({ pressed }) => [styles.pinBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Drop a pin on the map"
+          >
+            <Ionicons name="location" size={16} color={Star.ink} />
+            <Text style={styles.pinBtnText}>Drop a pin on the map</Text>
+          </Pressable>
+          <DropPinModal visible={pinOpen} onClose={() => setPinOpen(false)} onConfirm={addPin} saving={pinSaving} />
+        </>
+      ) : null}
     </View>
   );
 }
@@ -155,6 +188,19 @@ const makeStyles = (Star: Palette) =>
       backgroundColor: Star.surface,
     },
     addBtnText: { fontSize: 15, fontWeight: "800", color: Star.ink },
+    pinBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 2,
+      paddingVertical: 11,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: Star.ink,
+      backgroundColor: Star.base,
+    },
+    pinBtnText: { fontSize: 14, fontWeight: "800", color: Star.ink },
     panel: {
       borderRadius: 16,
       borderWidth: 2,
