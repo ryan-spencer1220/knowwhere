@@ -260,7 +260,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   title: { fontSize: 32, fontWeight: "900", color: Star.ink, letterSpacing: -1 },
   subtitle: { fontSize: 14, fontWeight: "600", color: Star.ink, opacity: 0.65, marginTop: 2 },
   pressed: { opacity: 0.7 },
-  filterRow: { paddingHorizontal: 20, paddingBottom: 12 },
+  filterRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
   trigger: {
     alignSelf: "flex-start",
     maxWidth: "100%",

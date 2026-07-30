@@ -45,7 +45,6 @@ export function NearMe() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <NearMeHeader />
-        <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       </SafeAreaView>
 
       <View style={styles.mapWrap}>
@@ -69,6 +68,7 @@ export function NearMe() {
         </MapView>
       </View>
 
+      <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       <NearbyList places={places} loading={loading} onPressPlace={openPlace} />
     </View>
   );

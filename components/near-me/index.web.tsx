@@ -20,12 +20,12 @@ export function NearMe() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <NearMeHeader />
-        <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       </SafeAreaView>
       <View style={styles.placeholder}>
         <Ionicons name="map" size={34} color={Star.ink} style={styles.icon} />
         <Text style={styles.text}>Map preview (native only)</Text>
       </View>
+      <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       <NearbyList places={places} loading={loading} onPressPlace={(id) => router.push({ pathname: "/place/[id]", params: { id } })} />
     </View>
   );
