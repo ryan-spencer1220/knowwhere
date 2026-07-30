@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
-import { getNearbyPlaces, milesLabel, type NearbyPlace } from "@/lib/nearby";
+import { getNearbyPlaces, getOwnerLists, milesLabel, type NearbyPlace, type OwnerList } from "@/lib/nearby";
 
 export type Coords = { latitude: number; longitude: number };
 
@@ -21,8 +21,12 @@ export function useNearbyPlaces(center: Coords | null) {
   const { session } = useAuth();
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [loading, setLoading] = useState(true);
-  // Filter the list/map down to a single person's places (null = everyone).
+  // Filter the list/map down to a single person's places (null = everyone),
+  // and optionally to one of that person's lists (null = all of their lists).
   const [ownerFilter, setOwnerFilter] = useState<string | null>(null);
+  const [listFilter, setListFilter] = useState<string | null>(null);
+  const [ownerLists, setOwnerLists] = useState<OwnerList[]>([]);
+  const [ownerListsLoading, setOwnerListsLoading] = useState(false);
 
   useEffect(() => {
     if (!center || !session) {
@@ -71,45 +75,85 @@ export function useNearbyPlaces(center: Coords | null) {
     if (ownerFilter && !owners.some((o) => o.id === ownerFilter)) setOwnerFilter(null);
   }, [owners, ownerFilter]);
 
-  const filtered = useMemo(
-    () => (ownerFilter ? places.filter((p) => p.ownerId === ownerFilter) : places),
-    [places, ownerFilter],
-  );
+  // When the selected person changes, reset the list filter and load all of
+  // their lists (not just the ones with places nearby).
+  useEffect(() => {
+    setListFilter(null);
+    if (!ownerFilter) {
+      setOwnerLists([]);
+      return;
+    }
+    let active = true;
+    setOwnerListsLoading(true);
+    getOwnerLists(ownerFilter)
+      .then((ls) => active && setOwnerLists(ls))
+      .catch(() => active && setOwnerLists([]))
+      .finally(() => active && setOwnerListsLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [ownerFilter]);
 
-  return { places: filtered, loading, owners, ownerFilter, setOwnerFilter };
+  const filtered = useMemo(() => {
+    let result = ownerFilter ? places.filter((p) => p.ownerId === ownerFilter) : places;
+    if (listFilter) result = result.filter((p) => p.listId === listFilter);
+    return result;
+  }, [places, ownerFilter, listFilter]);
+
+  return {
+    places: filtered,
+    loading,
+    owners,
+    ownerFilter,
+    setOwnerFilter,
+    ownerLists,
+    ownerListsLoading,
+    listFilter,
+    setListFilter,
+  };
 }
 
-// Show a search box inside the picker once the people list gets long enough to
-// scroll uncomfortably (e.g. someone who follows many active mappers).
+// Show a search box inside the picker once the option list gets long enough to
+// scroll uncomfortably (e.g. someone who follows many active mappers, or has
+// dozens of lists).
 const SEARCH_THRESHOLD = 8;
 
-// Dropdown to filter nearby places by person. A compact trigger opens a modal
-// picker (searchable when long) so it scales to hundreds of followed people.
-// Renders nothing until there are at least two people to choose between.
-export function PersonFilter({
-  owners,
-  ownerFilter,
+type DropdownItem = { id: string; label: string };
+
+// A compact trigger that opens a modal picker (searchable when long). Reused by
+// both the person and list filters, so each scales to hundreds of options.
+function FilterDropdown({
+  title,
+  icon,
+  allLabel,
+  searchPlaceholder,
+  options,
+  value,
   onSelect,
+  loading = false,
 }: {
-  owners: OwnerOption[];
-  ownerFilter: string | null;
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  allLabel: string;
+  searchPlaceholder: string;
+  options: DropdownItem[];
+  value: string | null;
   onSelect: (id: string | null) => void;
+  loading?: boolean;
 }) {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const showSearch = owners.length > SEARCH_THRESHOLD;
+  const showSearch = options.length > SEARCH_THRESHOLD;
   const q = query.trim().toLowerCase();
   const matches = useMemo(
-    () => (q ? owners.filter((o) => o.label.toLowerCase().includes(q)) : owners),
-    [owners, q],
+    () => (q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options),
+    [options, q],
   );
 
-  if (owners.length < 2) return null;
-
-  const currentLabel = ownerFilter ? owners.find((o) => o.id === ownerFilter)?.label ?? "Everyone" : "Everyone";
+  const currentLabel = value ? options.find((o) => o.id === value)?.label ?? allLabel : allLabel;
   const close = () => {
     setOpen(false);
     setQuery("");
@@ -120,25 +164,29 @@ export function PersonFilter({
   };
 
   return (
-    <View style={styles.filterRow}>
+    <>
       <Pressable
         onPress={() => setOpen(true)}
         style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Filter by person. Currently showing ${currentLabel}.`}
+        accessibilityLabel={`${title}. Currently ${currentLabel}.`}
       >
-        <Ionicons name="filter" size={14} color={Star.ink} />
+        <Ionicons name={icon} size={14} color={Star.ink} />
         <Text style={styles.triggerText} numberOfLines={1}>
           {currentLabel}
         </Text>
-        <Ionicons name="chevron-down" size={16} color={Star.textMuted} />
+        {loading ? (
+          <ActivityIndicator size="small" color={Star.textMuted} />
+        ) : (
+          <Ionicons name="chevron-down" size={16} color={Star.textMuted} />
+        )}
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
         <Pressable style={styles.backdrop} onPress={close}>
           <Pressable style={styles.sheet} onPress={() => {}}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Show places from</Text>
+              <Text style={styles.sheetTitle}>{title}</Text>
               <Pressable onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={20} color={Star.ink} />
               </Pressable>
@@ -150,7 +198,7 @@ export function PersonFilter({
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Search people"
+                  placeholder={searchPlaceholder}
                   placeholderTextColor={Star.textMuted}
                   style={styles.searchInput}
                   autoCorrect={false}
@@ -160,15 +208,64 @@ export function PersonFilter({
             ) : null}
 
             <ScrollView style={styles.optionScroll} keyboardShouldPersistTaps="handled">
-              {!q ? <OptionRow label="Everyone" active={ownerFilter === null} onPress={() => choose(null)} /> : null}
+              {!q ? <OptionRow label={allLabel} active={value === null} onPress={() => choose(null)} /> : null}
               {matches.map((o) => (
-                <OptionRow key={o.id} label={o.label} active={ownerFilter === o.id} onPress={() => choose(o.id)} />
+                <OptionRow key={o.id} label={o.label} active={value === o.id} onPress={() => choose(o.id)} />
               ))}
-              {q && matches.length === 0 ? <Text style={styles.noMatch}>No one matches “{query.trim()}”.</Text> : null}
+              {q && matches.length === 0 ? <Text style={styles.noMatch}>Nothing matches “{query.trim()}”.</Text> : null}
             </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
+    </>
+  );
+}
+
+// The Near Me filter row: pick a person, then (once picked) one of their lists.
+// Renders nothing until there are at least two people to choose between.
+export function NearbyFilters({
+  owners,
+  ownerFilter,
+  onSelectOwner,
+  ownerLists,
+  ownerListsLoading,
+  listFilter,
+  onSelectList,
+}: {
+  owners: OwnerOption[];
+  ownerFilter: string | null;
+  onSelectOwner: (id: string | null) => void;
+  ownerLists: OwnerList[];
+  ownerListsLoading: boolean;
+  listFilter: string | null;
+  onSelectList: (id: string | null) => void;
+}) {
+  const styles = useThemedStyles(makeStyles);
+  if (owners.length < 2) return null;
+
+  return (
+    <View style={styles.filterRow}>
+      <FilterDropdown
+        title="Show places from"
+        icon="filter"
+        allLabel="Everyone"
+        searchPlaceholder="Search people"
+        options={owners}
+        value={ownerFilter}
+        onSelect={onSelectOwner}
+      />
+      {ownerFilter ? (
+        <FilterDropdown
+          title="Show which list"
+          icon="list"
+          allLabel="All lists"
+          searchPlaceholder="Search lists"
+          options={ownerLists.map((l) => ({ id: l.id, label: l.title }))}
+          value={listFilter}
+          onSelect={onSelectList}
+          loading={ownerListsLoading}
+        />
+      ) : null}
     </View>
   );
 }
@@ -206,10 +303,14 @@ export function NearbyList({
   places,
   loading,
   onPressPlace,
+  emptyTitle = "Nothing nearby",
+  emptyBody = "No saved places around here yet. Add some, or follow people who have.",
 }: {
   places: NearbyPlace[];
   loading: boolean;
   onPressPlace: (id: string) => void;
+  emptyTitle?: string;
+  emptyBody?: string;
 }) {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -224,8 +325,8 @@ export function NearbyList({
         <ActivityIndicator color={Star.ink} style={styles.loader} />
       ) : places.length === 0 ? (
         <Card style={styles.empty}>
-          <Text style={styles.emptyTitle}>Nothing nearby</Text>
-          <Text style={styles.emptyBody}>No saved places around here yet. Add some, or follow people who have.</Text>
+          <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+          <Text style={styles.emptyBody}>{emptyBody}</Text>
         </Card>
       ) : (
         places.map((p) => (
@@ -260,10 +361,18 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   title: { fontSize: 32, fontWeight: "900", color: Star.ink, letterSpacing: -1 },
   subtitle: { fontSize: 14, fontWeight: "600", color: Star.ink, opacity: 0.65, marginTop: 2 },
   pressed: { opacity: 0.7 },
-  filterRow: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
   trigger: {
     alignSelf: "flex-start",
-    maxWidth: "100%",
+    maxWidth: 240,
     flexDirection: "row",
     alignItems: "center",
     gap: 7,

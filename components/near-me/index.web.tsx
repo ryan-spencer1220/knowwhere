@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Texture } from "@/components/ui/kit";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
-import { DEFAULT_CENTER, NearbyList, NearMeHeader, PersonFilter, useNearbyPlaces } from "./shared";
+import { DEFAULT_CENTER, NearbyFilters, NearbyList, NearMeHeader, useNearbyPlaces } from "./shared";
 
 // Map is native-only; web previews the header + nearby list using the default
 // center (real geolocation + map render on device).
@@ -13,7 +13,10 @@ export function NearMe() {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const { places, loading, owners, ownerFilter, setOwnerFilter } = useNearbyPlaces(DEFAULT_CENTER);
+  const { places, loading, owners, ownerFilter, setOwnerFilter, ownerLists, ownerListsLoading, listFilter, setListFilter } =
+    useNearbyPlaces(DEFAULT_CENTER);
+
+  const emptyList = listFilter != null && !loading && places.length === 0;
 
   return (
     <View style={styles.root}>
@@ -23,10 +26,24 @@ export function NearMe() {
       </SafeAreaView>
       <View style={styles.placeholder}>
         <Ionicons name="map" size={34} color={Star.ink} style={styles.icon} />
-        <Text style={styles.text}>Map preview (native only)</Text>
+        <Text style={styles.text}>{emptyList ? "Nothing nearby in this list." : "Map preview (native only)"}</Text>
       </View>
-      <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
-      <NearbyList places={places} loading={loading} onPressPlace={(id) => router.push({ pathname: "/place/[id]", params: { id } })} />
+      <NearbyFilters
+        owners={owners}
+        ownerFilter={ownerFilter}
+        onSelectOwner={setOwnerFilter}
+        ownerLists={ownerLists}
+        ownerListsLoading={ownerListsLoading}
+        listFilter={listFilter}
+        onSelectList={setListFilter}
+      />
+      <NearbyList
+        places={places}
+        loading={loading}
+        onPressPlace={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
+        emptyTitle={emptyList ? "Nothing nearby in this list" : undefined}
+        emptyBody={emptyList ? "None of this list's places are within range of where you are right now." : undefined}
+      />
     </View>
   );
 }
