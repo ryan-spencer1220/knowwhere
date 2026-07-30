@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Texture } from "@/components/ui/kit";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
-import { DEFAULT_CENTER, NearbyList, NearMeHeader, useNearbyPlaces } from "./shared";
+import { DEFAULT_CENTER, NearbyList, NearMeHeader, PersonFilter, useNearbyPlaces } from "./shared";
 
 // Map is native-only; web previews the header + nearby list using the default
 // center (real geolocation + map render on device).
@@ -13,13 +13,14 @@ export function NearMe() {
   const Star = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const { places, loading } = useNearbyPlaces(DEFAULT_CENTER);
+  const { places, loading, owners, ownerFilter, setOwnerFilter } = useNearbyPlaces(DEFAULT_CENTER);
 
   return (
     <View style={styles.root}>
       <Texture />
       <SafeAreaView edges={["top"]}>
         <NearMeHeader />
+        <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       </SafeAreaView>
       <View style={styles.placeholder}>
         <Ionicons name="map" size={34} color={Star.ink} style={styles.icon} />

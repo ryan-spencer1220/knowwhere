@@ -10,6 +10,8 @@ export type NearbyPlace = {
   latitude: number;
   longitude: number;
   listTitle: string | null;
+  ownerId: string | null;
+  ownerName: string | null;
   ownerUsername: string | null;
   distanceKm: number;
 };
@@ -31,10 +33,12 @@ type RawNearbyRow = {
   latitude: number | null;
   longitude: number | null;
   list:
-    | { title: string | null; owner: { username: string | null } | { username: string | null }[] | null }
-    | { title: string | null; owner: { username: string | null } | { username: string | null }[] | null }[]
+    | { title: string | null; owner: RawOwner | RawOwner[] | null }
+    | { title: string | null; owner: RawOwner | RawOwner[] | null }[]
     | null;
 };
+
+type RawOwner = { id: string; username: string | null; display_name: string | null };
 
 // Places near a point, from the user's own lists + the people they follow.
 export async function getNearbyPlaces(
@@ -63,7 +67,7 @@ export async function getNearbyPlaces(
   const lngDelta = radiusKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
   const { data, error } = await supabase
     .from("list_places")
-    .select("id, name, address, latitude, longitude, list:lists!inner(title, owner:profiles!owner_id(username))")
+    .select("id, name, address, latitude, longitude, list:lists!inner(title, owner:profiles!owner_id(id, username, display_name))")
     .in("list_id", listIds)
     .gte("latitude", lat - latDelta)
     .lte("latitude", lat + latDelta)
@@ -83,6 +87,8 @@ export async function getNearbyPlaces(
         latitude: r.latitude as number,
         longitude: r.longitude as number,
         listTitle: list?.title ?? null,
+        ownerId: owner?.id ?? null,
+        ownerName: owner?.display_name ?? null,
         ownerUsername: owner?.username ?? null,
         distanceKm: haversineKm(lat, lng, r.latitude as number, r.longitude as number),
       };

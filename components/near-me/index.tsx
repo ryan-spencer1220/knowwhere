@@ -7,7 +7,7 @@ import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 
 import { Texture } from "@/components/ui/kit";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
-import { DEFAULT_CENTER, NearbyList, NearMeHeader, useNearbyPlaces, type Coords } from "./shared";
+import { DEFAULT_CENTER, NearbyList, NearMeHeader, PersonFilter, useNearbyPlaces, type Coords } from "./shared";
 
 export function NearMe() {
   const Star = useTheme();
@@ -15,7 +15,7 @@ export function NearMe() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const [center, setCenter] = useState<Coords>(DEFAULT_CENTER);
-  const { places, loading } = useNearbyPlaces(center);
+  const { places, loading, owners, ownerFilter, setOwnerFilter } = useNearbyPlaces(center);
 
   // Center on the user's real location once granted.
   useEffect(() => {
@@ -45,6 +45,7 @@ export function NearMe() {
       <Texture />
       <SafeAreaView edges={["top"]}>
         <NearMeHeader />
+        <PersonFilter owners={owners} ownerFilter={ownerFilter} onSelect={setOwnerFilter} />
       </SafeAreaView>
 
       <View style={styles.mapWrap}>
