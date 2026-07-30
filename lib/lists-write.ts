@@ -37,3 +37,31 @@ export async function saveList({ ownerId, title, isPublic, spots }: SaveListInpu
 
   return list.id as string;
 }
+
+// Append a single spot to an existing list, positioned after its last place.
+// Returns "duplicate" (and writes nothing) when the spot is already in the list,
+// since list_places has no uniqueness constraint. RLS restricts writes to the
+// list's owner.
+export async function addSpotToList(listId: string, spot: Spot): Promise<"added" | "duplicate"> {
+  const { data: existing, error: readErr } = await supabase
+    .from("list_places")
+    .select("google_place_id, position")
+    .eq("list_id", listId);
+  if (readErr) throw readErr;
+
+  const rows = existing ?? [];
+  if (rows.some((r) => r.google_place_id === spot.id)) return "duplicate";
+  const nextPosition = rows.reduce((max, r) => Math.max(max, r.position + 1), 0);
+
+  const { error: insertErr } = await supabase.from("list_places").insert({
+    list_id: listId,
+    google_place_id: spot.id,
+    name: spot.name,
+    address: spot.address,
+    latitude: spot.latitude,
+    longitude: spot.longitude,
+    position: nextPosition,
+  });
+  if (insertErr) throw insertErr;
+  return "added";
+}
