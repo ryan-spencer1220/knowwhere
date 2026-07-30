@@ -8,6 +8,9 @@ export type Spot = {
   address: string;
   latitude: number;
   longitude: number;
+  // A user-dropped map pin with no backing Google Place. `id` is a local-only
+  // key; the row is stored with a null google_place_id.
+  custom?: boolean;
 };
 
 export type Prediction = { placeId: string; primary: string; secondary: string };

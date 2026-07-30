@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DropPinModal, type DroppedPin } from "@/components/drop-pin";
 import { Button, Field } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
 import { FLOATING_TAB_BAR_SPACE } from "@/lib/layout";
@@ -108,6 +109,20 @@ export function useAddFlow() {
   };
   const removeSpot = (id: string) => setSpots((prev) => prev.filter((s) => s.id !== id));
 
+  // Add a user-dropped map pin (no Google Place) to the in-progress list. The
+  // id is a local-only key; saveList persists it with a null google_place_id.
+  const addDroppedPin = (pin: DroppedPin) => {
+    const spot: Spot = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: pin.name,
+      address: "",
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      custom: true,
+    };
+    setSpots((prev) => [...prev, spot]);
+  };
+
   // Open the "add to an existing list" picker, loading the user's lists fresh so
   // place counts (used to position the new place) are current.
   const openListPicker = async () => {
@@ -191,6 +206,7 @@ export function useAddFlow() {
     spots,
     addSelected,
     removeSpot,
+    addDroppedPin,
     alreadyAdded,
     pickingList,
     myLists,
@@ -232,6 +248,7 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
       hide.remove();
     };
   }, []);
+  const [pinOpen, setPinOpen] = useState(false);
   // Offer the import shortcut only on a clean slate, so it never covers results.
   // Native-only: file picking + reading isn't wired for the web preview.
   const showImport =
@@ -240,6 +257,8 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
     flow.predictions.length === 0 &&
     flow.spots.length === 0 &&
     !flow.selected;
+  // Dropping a custom pin stays available whenever the user isn't mid-result.
+  const showPin = Platform.OS !== "web" && flow.predictions.length === 0 && !flow.selected;
 
   return (
     <>
@@ -285,7 +304,23 @@ export function AddFlowOverlays({ flow }: { flow: AddFlow }) {
             <Text style={styles.importText}>Import a list from Google Maps</Text>
           </Pressable>
         ) : null}
+
+        {showPin ? (
+          <Pressable onPress={() => setPinOpen(true)} style={styles.importBtn}>
+            <Ionicons name="location" size={18} color={Star.ink} />
+            <Text style={styles.importText}>Drop a pin on the map</Text>
+          </Pressable>
+        ) : null}
       </View>
+
+      <DropPinModal
+        visible={pinOpen}
+        onClose={() => setPinOpen(false)}
+        onConfirm={(pin) => {
+          flow.addDroppedPin(pin);
+          setPinOpen(false);
+        }}
+      />
 
       {/* Bottom: selected-spot card and/or list builder */}
       <View
