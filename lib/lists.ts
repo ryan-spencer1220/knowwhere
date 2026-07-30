@@ -233,6 +233,19 @@ export async function renameList(listId: string, title: string): Promise<void> {
   if (error) throw error;
 }
 
+// Set (or clear, when blank) a list's description. RLS restricts to the owner.
+export async function setListDescription(listId: string, description: string): Promise<void> {
+  const { error } = await supabase.from("lists").update({ description: description.trim() || null }).eq("id", listId);
+  if (error) throw error;
+}
+
+// Set (or clear, when blank) a place's note within a list. RLS restricts to the
+// list's owner. `placeRowId` is the list_places row id (not the Google place id).
+export async function setPlaceNote(placeRowId: string, note: string): Promise<void> {
+  const { error } = await supabase.from("list_places").update({ note: note.trim() || null }).eq("id", placeRowId);
+  if (error) throw error;
+}
+
 // Delete a list (and its places/saves via ON DELETE CASCADE). RLS restricts
 // this to the list's owner.
 export async function deleteList(listId: string): Promise<void> {
