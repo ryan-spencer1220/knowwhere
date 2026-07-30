@@ -9,7 +9,18 @@ import { LikeButton } from "@/components/like-button";
 import { ListMap } from "@/components/list-map";
 import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
-import { deleteList, getListDetail, removePlaceFromList, renameList, setListVisibility, timeAgo, type ListDetail, type PlaceItem } from "@/lib/lists";
+import {
+  deleteList,
+  getListDetail,
+  removePlaceFromList,
+  renameList,
+  setListDescription,
+  setListVisibility,
+  setPlaceNote,
+  timeAgo,
+  type ListDetail,
+  type PlaceItem,
+} from "@/lib/lists";
 import { REPORT_REASONS, reportContent } from "@/lib/moderation";
 import { useTheme, useThemedStyles, type Palette } from "@/lib/theme";
 import { useFocusQuery } from "@/lib/use-focus-query";
@@ -58,6 +69,62 @@ export default function ListDetailScreen() {
       Alert.alert("Couldn't rename", "Something went wrong renaming this list. Please try again.");
     } finally {
       setSavingTitle(false);
+    }
+  };
+
+  // Inline description editing (owner only).
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+  const [savingDesc, setSavingDesc] = useState(false);
+
+  const startEditDesc = () => {
+    if (!data) return;
+    setDescDraft(data.description ?? "");
+    setEditingDesc(true);
+  };
+  const saveDesc = async () => {
+    if (!data) return;
+    const next = descDraft.trim();
+    if (next === (data.description ?? "")) {
+      setEditingDesc(false);
+      return;
+    }
+    setSavingDesc(true);
+    try {
+      await setListDescription(data.id, next);
+      setEditingDesc(false);
+      refetch();
+    } catch {
+      Alert.alert("Couldn't save", "Something went wrong saving the description. Please try again.");
+    } finally {
+      setSavingDesc(false);
+    }
+  };
+
+  // Inline per-place note editing (owner only). Tracks the row being edited.
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  const startEditNote = (place: PlaceItem) => {
+    setNoteDraft(place.note ?? "");
+    setEditingNoteId(place.id);
+  };
+  const saveNote = async (place: PlaceItem) => {
+    const next = noteDraft.trim();
+    if (next === (place.note ?? "")) {
+      setEditingNoteId(null);
+      return;
+    }
+    setSavingNote(true);
+    try {
+      await setPlaceNote(place.id, next);
+      setEditingNoteId(null);
+      refetch();
+    } catch {
+      Alert.alert("Couldn't save", "Something went wrong saving the note. Please try again.");
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -210,7 +277,39 @@ export default function ListDetailScreen() {
               <Text style={styles.byline}>{timeAgo(data.createdAt)}</Text>
             </View>
             {data.city || data.location ? <Pill icon="location" label={data.city ?? data.location!} /> : null}
-            {data.description ? <Text style={styles.description}>{data.description}</Text> : null}
+
+            {editingDesc ? (
+              <View style={styles.editBlock}>
+                <TextInput
+                  value={descDraft}
+                  onChangeText={setDescDraft}
+                  style={styles.descInput}
+                  placeholder="Introduce this list — what ties these places together?"
+                  placeholderTextColor={Star.textMuted}
+                  multiline
+                  autoFocus
+                  maxLength={500}
+                />
+                <View style={styles.editActions}>
+                  <IconButton icon="checkmark" onPress={saveDesc} loading={savingDesc} size={40} accessibilityLabel="Save description" />
+                  <IconButton icon="close" onPress={() => setEditingDesc(false)} disabled={savingDesc} size={40} accessibilityLabel="Cancel" />
+                </View>
+              </View>
+            ) : data.description ? (
+              isOwner ? (
+                <Pressable onPress={startEditDesc} style={styles.descRow} hitSlop={4} accessibilityLabel="Edit description">
+                  <Text style={[styles.description, styles.flex]}>{data.description}</Text>
+                  <Ionicons name="pencil" size={14} color={Star.textMuted} style={styles.descPencil} />
+                </Pressable>
+              ) : (
+                <Text style={styles.description}>{data.description}</Text>
+              )
+            ) : isOwner ? (
+              <Pressable onPress={startEditDesc} style={({ pressed }) => [styles.addRow, pressed && styles.pressed]} hitSlop={4}>
+                <Ionicons name="add-circle-outline" size={16} color={Star.pop} />
+                <Text style={styles.addText}>Add a description</Text>
+              </Pressable>
+            ) : null}
 
             <View style={styles.likeRow}>
               <LikeButton listId={data.id} liked={data.likedByMe} count={data.savesCount} />
@@ -242,31 +341,68 @@ export default function ListDetailScreen() {
                 <Text style={styles.emptyText}>This list doesn&apos;t have any places yet.</Text>
               </Card>
             ) : (
-              data.places.map((place, i) => (
-                <Card key={place.id} onPress={() => router.push({ pathname: "/place/[id]", params: { id: place.id } })}>
-                  <View style={styles.placeRow}>
-                    <View style={styles.numberBadge}>
-                      <Text style={styles.numberText}>{i + 1}</Text>
+              data.places.map((place, i) => {
+                const editingThisNote = editingNoteId === place.id;
+                return (
+                  <Card
+                    key={place.id}
+                    onPress={editingThisNote ? undefined : () => router.push({ pathname: "/place/[id]", params: { id: place.id } })}
+                  >
+                    <View style={styles.placeRow}>
+                      <View style={styles.numberBadge}>
+                        <Text style={styles.numberText}>{i + 1}</Text>
+                      </View>
+                      <View style={styles.flex}>
+                        <Text style={styles.placeName}>{place.name}</Text>
+                        {place.address ? <Text style={styles.placeAddress}>{place.address}</Text> : null}
+
+                        {editingThisNote ? (
+                          <View style={styles.editBlock}>
+                            <TextInput
+                              value={noteDraft}
+                              onChangeText={setNoteDraft}
+                              style={styles.noteInput}
+                              placeholder="What did you love about this spot?"
+                              placeholderTextColor={Star.textMuted}
+                              multiline
+                              autoFocus
+                              maxLength={280}
+                            />
+                            <View style={styles.editActions}>
+                              <IconButton icon="checkmark" onPress={() => saveNote(place)} loading={savingNote} size={36} accessibilityLabel="Save note" />
+                              <IconButton icon="close" onPress={() => setEditingNoteId(null)} disabled={savingNote} size={36} accessibilityLabel="Cancel" />
+                            </View>
+                          </View>
+                        ) : place.note ? (
+                          isOwner ? (
+                            <Pressable onPress={() => startEditNote(place)} hitSlop={4} accessibilityLabel="Edit note">
+                              <Text style={styles.placeNote}>{place.note}</Text>
+                            </Pressable>
+                          ) : (
+                            <Text style={styles.placeNote}>{place.note}</Text>
+                          )
+                        ) : isOwner ? (
+                          <Pressable onPress={() => startEditNote(place)} style={({ pressed }) => [styles.addRow, pressed && styles.pressed]} hitSlop={4}>
+                            <Ionicons name="add-circle-outline" size={14} color={Star.pop} />
+                            <Text style={styles.addText}>Add a note</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      {isOwner && !editingThisNote ? (
+                        <Pressable
+                          onPress={() => confirmRemovePlace(place)}
+                          hitSlop={8}
+                          style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${place.name}`}
+                        >
+                          <Ionicons name="close" size={18} color={Star.textMuted} />
+                        </Pressable>
+                      ) : null}
                     </View>
-                    <View style={styles.flex}>
-                      <Text style={styles.placeName}>{place.name}</Text>
-                      {place.address ? <Text style={styles.placeAddress}>{place.address}</Text> : null}
-                      {place.note ? <Text style={styles.placeNote}>{place.note}</Text> : null}
-                    </View>
-                    {isOwner ? (
-                      <Pressable
-                        onPress={() => confirmRemovePlace(place)}
-                        hitSlop={8}
-                        style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${place.name}`}
-                      >
-                        <Ionicons name="close" size={18} color={Star.textMuted} />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </Card>
-              ))
+                  </Card>
+                );
+              })
             )}
 
             {isOwner ? (
@@ -322,6 +458,39 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   bylineName: { color: Star.pop, fontWeight: "800" },
   metaDot: { color: Star.textMuted, fontWeight: "800" },
   description: { fontSize: 15, fontWeight: "500", color: Star.text, lineHeight: 21 },
+  descRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  descPencil: { marginTop: 3 },
+  // Shared inline-edit affordances for description + place notes.
+  editBlock: { gap: 8, marginTop: 4 },
+  descInput: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: Star.text,
+    lineHeight: 21,
+    minHeight: 72,
+    textAlignVertical: "top",
+    backgroundColor: Star.surface,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    padding: 12,
+  },
+  noteInput: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Star.text,
+    lineHeight: 20,
+    minHeight: 60,
+    textAlignVertical: "top",
+    backgroundColor: Star.base,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Star.ink,
+    padding: 10,
+  },
+  editActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  addRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  addText: { fontSize: 14, fontWeight: "800", color: Star.pop },
   likeRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 2 },
   visToggle: {
     flexDirection: "row",
