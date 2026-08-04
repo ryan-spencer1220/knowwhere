@@ -16,6 +16,9 @@ jest.mock("@/lib/auth", () => ({ useAuth: () => ({ session: { user: { id: "viewe
 // Maps are native-only — stub the map component entirely.
 jest.mock("@/components/list-map", () => ({ ListMap: () => null }));
 
+// Comments fetch their own data; stub the section (covered by comments tests).
+jest.mock("@/components/list-comments", () => ({ ListComments: () => null }));
+
 const mockFixture: ListDetail = {
   id: "l1",
   title: "SF Favorites",
@@ -28,6 +31,7 @@ const mockFixture: ListDetail = {
   ownerName: "Sam",
   isPublic: true,
   savesCount: 3,
+  commentsCount: 0,
   likedByMe: false,
   places: [
     { id: "p1", googlePlaceId: "g1", name: "Dolores Park", address: "Dolores St", latitude: 1, longitude: 2, note: null, position: 0 },
