@@ -167,8 +167,27 @@ describe("fetchSharedList", () => {
     expect(rows[0]).toMatchObject({ status: "unmatched", row: { title: "Mystery Spot" } });
   });
 
-  it("throws when the edge function returns an error", async () => {
-    mockInvoke.mockResolvedValue({ data: null, error: new Error("Missing APIFY_TOKEN secret.") });
+  it("surfaces the server's error body from a FunctionsHttpError (not the generic message)", async () => {
+    // supabase-js sets a generic message and stashes the real body on `.context`.
+    const httpErr = Object.assign(new Error("Edge Function returned a non-2xx status code"), {
+      context: { json: async () => ({ error: "Missing APIFY_TOKEN secret." }) },
+    });
+    mockInvoke.mockResolvedValue({ data: null, error: httpErr });
     await expect(fetchSharedList("https://maps.app.goo.gl/x")).rejects.toThrow("Missing APIFY_TOKEN");
+  });
+
+  it("includes the server detail when present", async () => {
+    const httpErr = Object.assign(new Error("non-2xx"), {
+      context: { json: async () => ({ error: "Couldn't read that list.", detail: "apify 402" }) },
+    });
+    mockInvoke.mockResolvedValue({ data: null, error: httpErr });
+    await expect(fetchSharedList("https://maps.app.goo.gl/x")).rejects.toThrow("apify 402");
+  });
+
+  it("reports rawCount 0 when the scraper returns no places", async () => {
+    mockInvoke.mockResolvedValue({ data: { places: [], listName: null, rawCount: 0 }, error: null });
+    const { rows, rawCount } = await fetchSharedList("https://maps.app.goo.gl/x");
+    expect(rows).toHaveLength(0);
+    expect(rawCount).toBe(0);
   });
 });

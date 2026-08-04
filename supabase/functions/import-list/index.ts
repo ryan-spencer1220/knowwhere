@@ -78,7 +78,12 @@ Deno.serve(async (req) => {
       (typeof first.sourceListName === "string" ? first.sourceListName : null) ??
       null;
 
-    return json({ places, listName });
+    // `rawCount` lets the client (and us) tell apart the two empty-result cases:
+    //   rawCount 0            -> the scraper actor returned nothing (broken actor,
+    //                            plan/rental limit, or a genuinely private/empty list)
+    //   rawCount > 0, places 0 -> the actor returned records we couldn't read
+    //                            (its output field names drifted; update normalize)
+    return json({ places, listName, rawCount: list.length });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "Unexpected error." }, 500);
   }
