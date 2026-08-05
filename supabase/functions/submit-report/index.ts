@@ -17,7 +17,7 @@ const corsHeaders = {
 };
 
 const MODERATOR_EMAIL = Deno.env.get("MODERATOR_EMAIL") ?? "ryan.spencer1220@gmail.com";
-const VALID_TYPES = new Set(["list", "user", "place"]);
+const VALID_TYPES = new Set(["list", "user", "place", "comment"]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

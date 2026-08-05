@@ -42,6 +42,7 @@ export type Database = {
           cover_image_url: string | null;
           is_public: boolean;
           saves_count: number;
+          comments_count: number;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -55,6 +56,7 @@ export type Database = {
           cover_image_url?: string | null;
           is_public?: boolean;
           saves_count?: number;
+          comments_count?: number;
           created_at?: Timestamp;
           updated_at?: Timestamp;
         };
@@ -115,6 +117,26 @@ export type Database = {
           created_at?: Timestamp;
         };
         Update: Partial<Database["public"]["Tables"]["list_saves"]["Insert"]>;
+        Relationships: [];
+      };
+      list_comments: {
+        Row: {
+          id: string;
+          list_id: string;
+          author_id: string;
+          body: string;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: {
+          id?: string;
+          list_id: string;
+          author_id: string;
+          body: string;
+          created_at?: Timestamp;
+          updated_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["list_comments"]["Insert"]>;
         Relationships: [];
       };
       reports: {

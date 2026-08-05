@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddPlaceToList } from "@/components/add-place-to-list";
 import { LikeButton } from "@/components/like-button";
+import { ListComments } from "@/components/list-comments";
 import { ListMap } from "@/components/list-map";
 import { Card, ErrorState, IconButton, Pill, Texture } from "@/components/ui/kit";
 import { useAuth } from "@/lib/auth";
@@ -413,6 +414,9 @@ export default function ListDetailScreen() {
                 onAdded={refetch}
               />
             ) : null}
+
+            <View style={styles.divider} />
+            <ListComments listId={data.id} listOwnerId={data.ownerId} />
           </View>
         </ScrollView>
       )}
@@ -437,6 +441,7 @@ const makeStyles = (Star: Palette) => StyleSheet.create({
   centerPad: { padding: 20 },
   scroll: { paddingBottom: 36 },
   body: { padding: 20, gap: 12 },
+  divider: { height: 2, backgroundColor: Star.border, marginVertical: 4 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   title: { flex: 1, fontSize: 28, fontWeight: "900", color: Star.ink, letterSpacing: -0.7 },
   titleEditRow: { flexDirection: "row", alignItems: "center", gap: 10 },
