@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
-export type ReportTargetType = "list" | "user" | "place";
+export type ReportTargetType = "list" | "user" | "place" | "comment";
 
 export const REPORT_REASONS = ["Spam", "Harassment", "Inappropriate", "Other"] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];

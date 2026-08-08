@@ -150,6 +150,7 @@ export type ListDetail = {
   ownerName: string | null;
   isPublic: boolean;
   savesCount: number;
+  commentsCount: number;
   likedByMe: boolean;
   places: PlaceItem[];
 };
@@ -164,6 +165,7 @@ type RawDetailRow = {
   created_at: string;
   is_public: boolean | null;
   saves_count: number | null;
+  comments_count: number | null;
   owner: DetailOwner | DetailOwner[] | null;
   list_places: PlaceItem[] | null;
 };
@@ -172,7 +174,7 @@ export async function getListDetail(id: string, currentUserId: string | null = n
   const { data, error } = await supabase
     .from("lists")
     .select(
-      "id, title, description, city, location, created_at, is_public, saves_count, owner:profiles!owner_id(id, username, display_name), list_places(id, googlePlaceId:google_place_id, name, address, latitude, longitude, note, position)",
+      "id, title, description, city, location, created_at, is_public, saves_count, comments_count, owner:profiles!owner_id(id, username, display_name), list_places(id, googlePlaceId:google_place_id, name, address, latitude, longitude, note, position)",
     )
     .eq("id", id)
     .single();
@@ -202,6 +204,7 @@ export async function getListDetail(id: string, currentUserId: string | null = n
     ownerName: owner?.display_name ?? null,
     isPublic: raw.is_public ?? true,
     savesCount: raw.saves_count ?? 0,
+    commentsCount: raw.comments_count ?? 0,
     likedByMe,
     places: (raw.list_places ?? []).slice().sort((a, b) => a.position - b.position),
   };
