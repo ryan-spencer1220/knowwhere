@@ -133,18 +133,45 @@ async function resolveSharedPlace(p: SharedListPlace): Promise<ResolvedRow> {
   }
 }
 
+// supabase-js wraps a non-2xx Edge Function response in a FunctionsHttpError
+// whose `.message` is generic ("… non-2xx status code") and whose real body is
+// stashed on `.context` (a Response). Dig out the server's own { error, detail }
+// so failures like a missing APIFY_TOKEN actually reach the user.
+async function functionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const ctx = (error as { context?: unknown })?.context;
+  const res = ctx as { json?: () => Promise<unknown> } | undefined;
+  if (res && typeof res.json === "function") {
+    try {
+      const body = (await res.json()) as { error?: string; detail?: string } | null;
+      if (body?.error) return body.detail ? `${body.error} (${body.detail})` : body.error;
+    } catch {
+      // Body wasn't JSON / already consumed — fall through to the raw message.
+    }
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export type SharedListResult = {
+  rows: ResolvedRow[];
+  listName: string | null;
+  // Raw place count the scraper returned before matching, so callers can tell a
+  // genuinely empty/private list from a scraper that returned unreadable records.
+  rawCount: number;
+};
+
 // Read a public shared Google Maps list from its link (via the import-list edge
-// function) and turn it into review rows. Returns the resolved rows plus the
-// list's name (when the scraper reports it) to pre-fill the title.
+// function) and turn it into review rows. Returns the resolved rows, the list's
+// name (when the scraper reports it), and the raw scraped count.
 export async function fetchSharedList(
   url: string,
   onProgress?: (done: number, total: number) => void,
-): Promise<{ rows: ResolvedRow[]; listName: string | null }> {
+): Promise<SharedListResult> {
   const { data, error } = await supabase.functions.invoke("import-list", { body: { url } });
-  if (error) throw error;
+  if (error) throw new Error(await functionErrorMessage(error, "Couldn't read that list."));
   const places = (data?.places ?? []) as SharedListPlace[];
+  const rawCount = typeof data?.rawCount === "number" ? (data.rawCount as number) : places.length;
   const rows = await mapPool(places, resolveSharedPlace, 4, onProgress);
-  return { rows, listName: (data?.listName ?? null) as string | null };
+  return { rows, listName: (data?.listName ?? null) as string | null, rawCount };
 }
 
 // Turn a picked file's name into a sensible default list title.

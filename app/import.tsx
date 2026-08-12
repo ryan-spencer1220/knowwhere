@@ -55,10 +55,15 @@ export default function ImportScreen() {
     }
     setPhase({ step: "resolving", label: "Reading your list…" });
     try {
-      const { rows, listName: name } = await fetchSharedList(url);
+      const { rows, listName: name, rawCount } = await fetchSharedList(url);
       if (rows.length === 0) {
+        // rawCount tells us whether the scraper found places at all: 0 means the
+        // list read back empty (private link, or the scraper couldn't open it);
+        // >0 means it found places but none could be matched to Google.
         setError(
-          "Couldn't read that list. Make sure it's shared with a public link (open the list in Google Maps → Share), or import a CSV instead.",
+          rawCount === 0
+            ? "We couldn't read any places from that link. Make sure the list is shared publicly (open it in Google Maps → Share → Anyone with the link), then try again — or import a CSV instead."
+            : "We found places in that list but couldn't match them to Google. Try importing a Takeout CSV instead.",
         );
         setPhase({ step: "idle" });
         return;
