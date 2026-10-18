@@ -1,50 +1,103 @@
-# Welcome to your Expo app 👋
+# KnowWhere
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+KnowWhere is a social iOS app for building and sharing lists of places. Make lists of restaurants, coffee shops, and spots worth visiting, see what the people you follow are saving, and find places from other people's lists near you.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Lists:** add places with Google Places search or drop a custom pin, add notes to each place, and keep lists public or private.
+- **Import from Google Maps:** paste a link to a publicly shared Google Maps list, or upload a Google Takeout CSV, and KnowWhere matches each entry to a Google place.
+- **Feed and Explore:** lists from people you follow, plus trending lists and suggested users.
+- **Near me:** places from lists within about 25 miles of your location, on a map.
+- **Social:** follow people, and like, save, and comment on lists.
+- **Sign in** with Apple, Google, or email.
+- **Safety:** report content and block users, built to meet App Store guidelines for user-generated content, plus in-app account deletion.
+- **Reliability:** an offline banner, friendly error messages, and optional Sentry crash reporting.
+
+## Tech stack
+
+- [Expo](https://expo.dev) SDK 54, React Native 0.81, React 19, and TypeScript
+- Expo Router for file-based navigation
+- `react-native-maps` for maps
+- [Supabase](https://supabase.com) for Postgres with row level security, authentication, avatar storage, and Edge Functions
+- Google Places API (New), called through a Supabase Edge Function so the API key never ships in the app
+- [Apify](https://apify.com) for reading shared Google Maps lists, which have no public API
+- Sentry for crash reporting
+- Jest and React Native Testing Library
+- GitHub Actions CI that type checks, lints, and runs tests
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20.19.4 (see `.nvmrc`)
+- Xcode with an iOS Simulator
+- A Supabase project and the [Supabase CLI](https://supabase.com/docs/guides/cli)
+- A Google Cloud project with the Places API (New) enabled
+- An Apify account, only needed for importing shared Google Maps lists
+
+### Setup
+
+1. Clone and install:
 
    ```bash
+   git clone https://github.com/ryan-spencer1220/knowwhere.git
+   cd knowwhere
    npm install
    ```
 
-2. Start the app
+2. Copy the example environment file and fill in your Supabase values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   | Variable | Where to find it |
+   | --- | --- |
+   | `EXPO_PUBLIC_SUPABASE_URL` | Supabase project settings, API |
+   | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase project settings, API |
+   | `EXPO_PUBLIC_SENTRY_DSN` | Optional. Leave blank to turn off crash reporting |
+
+3. Set up the database and Edge Functions:
+
+   ```bash
+   supabase link --project-ref YOUR_PROJECT_REF
+   supabase db push
+
+   supabase secrets set GOOGLE_PLACES_KEY=your_google_places_key
+   supabase secrets set APIFY_TOKEN=your_apify_token
+
+   supabase functions deploy places
+   supabase functions deploy import-list
+   supabase functions deploy submit-report
+   supabase functions deploy delete-account
+   ```
+
+4. Start the app:
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+   Press `i` to open the iOS Simulator.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### Tests and checks
 
 ```bash
-npm run reset-project
+npm test          # Jest tests
+npx tsc --noEmit  # TypeScript
+npm run lint      # ESLint
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Project structure
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+app/                 Screens and routes (Expo Router)
+  (tabs)/            Feed, Near me, Add, Explore, Profile
+  list/, place/      List and place detail screens
+  import.tsx         Google Maps list import
+components/          Shared UI components
+lib/                 Supabase data access, Places search, import parsing, auth
+supabase/
+  migrations/        Database schema and row level security policies
+  functions/         Edge Functions: places, import-list, submit-report, delete-account
+```
